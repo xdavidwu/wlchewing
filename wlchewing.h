@@ -1,0 +1,45 @@
+#ifndef WLCHEWING_H
+#define WLCHEWING_H
+
+#include <chewing.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <wayland-client.h>
+#include <xkbcommon/xkbcommon.h>
+
+#include "bottom-panel.h"
+#include "input-method-unstable-v2-client-protocol.h"
+#include "text-input-unstable-v3-client-protocol.h"
+
+struct wlchewing_state {
+	struct wl_display *display;
+	struct wl_compositor *compositor;
+	struct wl_shm *shm;
+	struct wl_seat *seat;
+
+	struct zwp_input_method_manager_v2 *input_method_manager;
+	struct zwp_input_method_v2 *input_method;
+	struct zwp_input_method_keyboard_grab_v2 *kb_grab;
+	bool pending_activate;
+	bool activated;
+
+	struct zwlr_layer_shell_v1 *layer_shell;
+	struct wlchewing_bottom_panel *bottom_panel;
+
+	ChewingContext *chewing;
+	bool forwarding;
+
+	struct xkb_context *xkb_context;
+	struct xkb_state *xkb_state;
+
+	int32_t serial;
+};
+
+void im_setup(struct wlchewing_state *state);
+
+void im_destory(struct wlchewing_state *state);
+
+#define wlchewing_err(fmt, ...) fprintf(stderr, "[%s:%d] " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+
+#endif
