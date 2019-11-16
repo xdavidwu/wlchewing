@@ -103,17 +103,18 @@ struct wl_list *buffer_pool_new(struct wl_shm *shm,
 }
 
 struct wlchewing_buffer *buffer_pool_get_buffer(struct wl_list *pool) {
-	struct wlchewing_buffer *cur_buffer;
+	struct wlchewing_buffer *cur_buffer, *last_buffer;
 	wl_list_for_each(cur_buffer, pool, link) {
 		if (cur_buffer->available) {
 			cur_buffer->available = false;
 			return cur_buffer;
 		}
+		last_buffer = cur_buffer;
 	}
 	printf("new buffer\n");
-	struct wlchewing_buffer *new_buffer = buffer_new(cur_buffer->shm,
-		cur_buffer->width, cur_buffer->height, cur_buffer->scale);
-	wl_list_insert(&cur_buffer->link, &new_buffer->link);
+	struct wlchewing_buffer *new_buffer = buffer_new(last_buffer->shm,
+		last_buffer->width, last_buffer->height, last_buffer->scale);
+	wl_list_insert(&last_buffer->link, &new_buffer->link);
 	return new_buffer;
 }
 
