@@ -1,4 +1,6 @@
+#include <errno.h>
 #include <sys/mman.h>
+#include <sys/timerfd.h>
 #include <unistd.h>
 
 #include "wlchewing.h"
@@ -7,7 +9,7 @@ static void noop() {
 	// no-op
 }
 
-static bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
+bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 	// return false if unhandled, need forwarding
 	if (xkb_state_mod_name_is_active(state->xkb_state, XKB_MOD_NAME_CTRL,
 			XKB_STATE_MODS_EFFECTIVE) > 0) {
@@ -42,6 +44,7 @@ static bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 				state->bottom_panel->selected_index--;
 				bottom_panel_render(state->bottom_panel,
 					state->chewing);
+				wl_display_roundtrip(state->display);
 			}
 			break;
 		case XKB_KEY_Right:
@@ -53,6 +56,7 @@ static bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 				state->bottom_panel->selected_index++;
 				bottom_panel_render(state->bottom_panel,
 					state->chewing);
+				wl_display_roundtrip(state->display);
 			}
 			break;
 		case XKB_KEY_Up:
@@ -69,6 +73,7 @@ static bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 			state->bottom_panel->selected_index = 0;
 			bottom_panel_render(state->bottom_panel,
 				state->chewing);
+			wl_display_roundtrip(state->display);
 			break;
 		case XKB_KEY_space:
 		default:
@@ -99,6 +104,7 @@ static bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 				state->bottom_panel = bottom_panel_new(state);
 				bottom_panel_render(state->bottom_panel,
 					state->chewing);
+				wl_display_roundtrip(state->display);
 			}
 			break;
 		default:
@@ -107,6 +113,7 @@ static bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 		}
 	}
 
+	state->last_keysym = keysym;
 	char *preedit = chewing_buffer_String(state->chewing);
 	if (!strlen(preedit)) {
 		free(preedit);
@@ -128,10 +135,11 @@ static bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 }
 
 static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
-		*zwp_input_method_keyboard_grab_v2, uint32_t serial, uint32_t time,
-		uint32_t key, uint32_t key_state) {
+		*zwp_input_method_keyboard_grab_v2, uint32_t serial,
+		uint32_t time, uint32_t key, uint32_t key_state) {
 	struct wlchewing_state *state = data;
-	xkb_keysym_t keysym = xkb_state_key_get_one_sym(state->xkb_state, key + 8);
+	xkb_keysym_t keysym = xkb_state_key_get_one_sym(state->xkb_state,
+		key + 8);
 	char keysym_name[64];
 	xkb_keysym_get_name(keysym, keysym_name, sizeof(keysym_name));
 	printf(" xkb translated to %s\n", keysym_name);
@@ -139,8 +147,35 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 		if (!im_key_press(state, keysym)){
 			wlchewing_err("Forwarding not yet implemeted");
 			// forward, record that future release needs forwarding
+		} else if (state->kb_rate != 0) {
+			state->last_keysym = keysym;
+			struct itimerspec timer_spec = {
+				.it_interval = {
+					.tv_sec = 0,
+					.tv_nsec = 1000000000 / state->kb_rate,
+				},
+				.it_value = {
+					.tv_sec = 0,
+					.tv_nsec = state->kb_delay * 1000000,
+				},
+			};
+			if (timerfd_settime(state->timer_fd, 0, &timer_spec,
+					NULL) == -1) {
+				wlchewing_err("Failed to arm timer: %s",
+					strerror(errno));
+			}
 		}
 	} else {
+		if (keysym == state->last_keysym) {
+			state->last_keysym = 0;
+			struct itimerspec timer_disarm = {0};
+			if (timerfd_settime(state->timer_fd, 0, &timer_disarm,
+					NULL) == -1) {
+				wlchewing_err("Failed to disarm timer: %s",
+					strerror(errno));
+			}
+			return;
+		}
 		// forward if needs forwarding
 	}
 }
@@ -171,11 +206,20 @@ static void handle_keymap(void *data, struct zwp_input_method_keyboard_grab_v2
 	// forward keymap
 }
 
+static void handle_repeat_info(void *data,
+		struct zwp_input_method_keyboard_grab_v2
+		*zwp_input_method_keyboard_grab_v2, int32_t rate,
+		int32_t delay) {
+	struct wlchewing_state *state = data;
+	state->kb_delay = delay;
+	state->kb_rate = rate;
+}
+
 static const struct zwp_input_method_keyboard_grab_v2_listener grab_listener = {
 	.key = handle_key,
 	.modifiers = handle_modifiers,
 	.keymap = handle_keymap,
-	.repeat_info = noop, // TODO
+	.repeat_info = handle_repeat_info,
 };
 
 static void handle_activate(void *data,

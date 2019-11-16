@@ -1,4 +1,8 @@
 #include <assert.h>
+#include <errno.h>
+#include <unistd.h>
+#include <sys/epoll.h>
+#include <sys/timerfd.h>
 
 #include "wlchewing.h"
 #include "bottom-panel.h"
@@ -79,10 +83,58 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 
+	int epoll_fd = epoll_create1(EPOLL_CLOEXEC);
+	if (epoll_fd < 0) {
+		wlchewing_err("Failed to create epoll: %s",
+			strerror(errno));
+		return EXIT_FAILURE;
+	}
+
+	int display_fd = wl_display_get_fd(state->display);
+	struct epoll_event display_epoll = {
+		.events = EPOLLIN,
+		.data = {
+			.fd = display_fd,
+		},
+	};
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, display_fd, &display_epoll)
+			== -1) {
+		wlchewing_err("Failed to add display epoll: %s",
+			strerror(errno));
+		return EXIT_FAILURE;
+	}
+
+	state->timer_fd = timerfd_create(CLOCK_MONOTONIC,
+		TFD_NONBLOCK | TFD_CLOEXEC);
+	if (state->timer_fd < 0) {
+		wlchewing_err("Failed to create timer: %s", strerror(errno));
+		return EXIT_FAILURE;
+	}
+	struct epoll_event timer_epoll = {
+		.events = EPOLLIN | EPOLLET,
+		.data = {
+			.fd = state->timer_fd,
+		},
+	};
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, state->timer_fd, &timer_epoll)
+			== -1) {
+		wlchewing_err("Failed to add timer epoll: %s", strerror(errno));
+		return EXIT_FAILURE;
+	}
+
 	im_setup(state);
-	
-	while (wl_display_dispatch(state->display) != -1) {
-		// dispatch loop
+
+	struct epoll_event event_caught;
+	while (epoll_wait(epoll_fd, &event_caught, 1, -1)) {
+		if (event_caught.data.fd == display_fd) {
+			if (wl_display_dispatch(state->display) == -1) {
+				break;
+			}
+		} else if (event_caught.data.fd == state->timer_fd) {
+			uint64_t count = 0;
+			read(state->timer_fd, &count, sizeof(uint64_t));
+			im_key_press(state, state->last_keysym);
+		}
 	}
 	return EXIT_SUCCESS;
 }

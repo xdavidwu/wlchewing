@@ -32,6 +32,9 @@ struct wlchewing_state {
 
 	struct xkb_context *xkb_context;
 	struct xkb_state *xkb_state;
+	xkb_keysym_t last_keysym;
+	int32_t kb_delay, kb_rate;
+	int timer_fd;
 
 	int32_t serial;
 };
@@ -39,6 +42,8 @@ struct wlchewing_state {
 void im_setup(struct wlchewing_state *state);
 
 void im_destory(struct wlchewing_state *state);
+
+bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym);
 
 #define wlchewing_err(fmt, ...) fprintf(stderr, "[%s:%d] " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 
