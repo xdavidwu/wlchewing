@@ -15,6 +15,9 @@ static void handle_global(void *data, struct wl_registry *registry,
 	if (strcmp(interface, zwp_input_method_manager_v2_interface.name) == 0) {
 		state->input_method_manager = wl_registry_bind(registry, name,
 			&zwp_input_method_manager_v2_interface, 1);
+	} else if (strcmp(interface, zwp_virtual_keyboard_manager_v1_interface.name) == 0) {
+		state->virtual_keyboard_manager = wl_registry_bind(registry, name,
+			&zwp_virtual_keyboard_manager_v1_interface, 1);
 	} else if (strcmp(interface, wl_seat_interface.name) == 0) {
 		state->seat = wl_registry_bind(registry, name, &wl_seat_interface, version);
 	} else if (strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0) {
@@ -75,10 +78,8 @@ int main(int argc, char **argv) {
 
 	if (state->layer_shell == NULL || state->shm == NULL
 			|| state->compositor == NULL
-			|| state->input_method_manager == NULL) {
-		/* TODO for adding panel with input-method support
-		 * currently only panel with wlr-layer-shell
-		 */
+			|| state->input_method_manager == NULL
+			|| state->virtual_keyboard_manager == NULL) {
 		wlchewing_err("Required wayland interface not available");
 		return EXIT_FAILURE;
 	}

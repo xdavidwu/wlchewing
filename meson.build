@@ -18,12 +18,14 @@ text_input_path = wl_protocols_dir + '/unstable/text-input/text-input-unstable-v
 protocols_src=[
   scanner_private_code.process('input-method-unstable-v2.xml'),
   scanner_private_code.process(text_input_path),
+  scanner_private_code.process('virtual-keyboard-unstable-v1.xml'),
   scanner_private_code.process('wlr-layer-shell-unstable-v1.xml'),
   scanner_private_code.process(xdg_shell)
 ]
 protocols_headers=[
   scanner_client_header.process('input-method-unstable-v2.xml'),
   scanner_client_header.process(text_input_path),
+  scanner_client_header.process('virtual-keyboard-unstable-v1.xml'),
   scanner_client_header.process('wlr-layer-shell-unstable-v1.xml'),
   scanner_client_header.process(xdg_shell)
 ]

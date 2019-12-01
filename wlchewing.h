@@ -11,6 +11,7 @@
 #include "bottom-panel.h"
 #include "input-method-unstable-v2-client-protocol.h"
 #include "text-input-unstable-v3-client-protocol.h"
+#include "virtual-keyboard-unstable-v1-client-protocol.h"
 
 struct wlchewing_state {
 	struct wl_display *display;
@@ -23,6 +24,9 @@ struct wlchewing_state {
 	struct zwp_input_method_keyboard_grab_v2 *kb_grab;
 	bool pending_activate;
 	bool activated;
+
+	struct zwp_virtual_keyboard_manager_v1 *virtual_keyboard_manager;
+	struct zwp_virtual_keyboard_v1 *virtual_keyboard;
 
 	struct zwlr_layer_shell_v1 *layer_shell;
 	struct wlchewing_bottom_panel *bottom_panel;

@@ -21,6 +21,10 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 				bottom_panel_destroy(state->bottom_panel);
 				state->bottom_panel = NULL;
 			}
+			zwp_input_method_v2_set_preedit_string(
+				state->input_method, "", 0, 0);
+			zwp_input_method_v2_commit(state->input_method,
+				state->serial);
 			return true;
 		}
 		return false;
@@ -75,9 +79,9 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 				state->chewing);
 			wl_display_roundtrip(state->display);
 			break;
-		case XKB_KEY_space:
 		default:
-			return false;
+			// no-op
+			break;
 		}
 	} else {
 		// TODO if chewing preedit is empty, forward bs, del, arrows...
@@ -113,7 +117,6 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 		}
 	}
 
-	state->last_keysym = keysym;
 	char *preedit = chewing_buffer_String(state->chewing);
 	if (!strlen(preedit)) {
 		free(preedit);
@@ -145,8 +148,13 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 	printf(" xkb translated to %s\n", keysym_name);
 	if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
 		if (!im_key_press(state, keysym)){
-			wlchewing_err("Forwarding not yet implemeted");
+			// wlchewing_err("Forwarding not yet implemeted");
 			// forward, record that future release needs forwarding
+			zwp_virtual_keyboard_v1_key(state->virtual_keyboard,
+				time, key, key_state);
+			// TODO release on real release
+			zwp_virtual_keyboard_v1_key(state->virtual_keyboard,
+				time, key, WL_KEYBOARD_KEY_STATE_RELEASED);
 		} else if (state->kb_rate != 0) {
 			state->last_keysym = keysym;
 			struct itimerspec timer_spec = {
@@ -188,6 +196,8 @@ static void handle_modifiers(void *data, struct zwp_input_method_keyboard_grab_v
 	xkb_state_update_mask(state->xkb_state, mods_depressed, mods_latched,
 		mods_locked, 0, 0, group);
 	// forward modifiers
+	zwp_virtual_keyboard_v1_modifiers(state->virtual_keyboard,
+		mods_depressed, mods_latched, mods_locked, group);
 }
 
 static void handle_keymap(void *data, struct zwp_input_method_keyboard_grab_v2
@@ -199,11 +209,13 @@ static void handle_keymap(void *data, struct zwp_input_method_keyboard_grab_v2
 		state->xkb_context, keymap_string, XKB_KEYMAP_FORMAT_TEXT_V1,
 		XKB_KEYMAP_COMPILE_NO_FLAGS);
 	munmap(keymap_string, size);
-	close(fd);
+	//close(fd);
 	xkb_state_unref(state->xkb_state);
 	state->xkb_state = xkb_state_new(keymap);
 	xkb_keymap_unref(keymap);
 	// forward keymap
+	zwp_virtual_keyboard_v1_keymap(state->virtual_keyboard,
+		format, fd, size);
 }
 
 static void handle_repeat_info(void *data,
@@ -251,6 +263,7 @@ static void handle_done(void *data,
 			state->input_method);
 		zwp_input_method_keyboard_grab_v2_add_listener(state->kb_grab,
 			&grab_listener, state);
+		wl_display_roundtrip(state->display);
 
 		if (!state->kb_grab) {
 			wlchewing_err("Failed to grab");
@@ -278,10 +291,17 @@ static const struct zwp_input_method_v2_listener im_listener = {
 	.unavailable = handle_unavailable,
 };
 
+/* TODO for adding panel with input-method support
+ * currently only panel with wlr-layer-shell
+ */
+
 void im_setup(struct wlchewing_state *state) {
 	state->input_method = zwp_input_method_manager_v2_get_input_method(
 		state->input_method_manager, state->seat);
 	zwp_input_method_v2_add_listener(state->input_method, &im_listener, state);
+
+	state->virtual_keyboard = zwp_virtual_keyboard_manager_v1_create_virtual_keyboard(
+		state->virtual_keyboard_manager, state->seat);
 
 	state->chewing = chewing_new();
 	state->xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
