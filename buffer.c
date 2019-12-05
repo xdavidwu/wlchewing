@@ -16,7 +16,16 @@ static const struct wl_buffer_listener buffer_listener = {
 	.release = handle_release,
 };
 
-static void mktempname(char *template) {
+static char *mktempname(char *template) {
+	struct timespec ts;
+	unsigned long r;
+
+	clock_gettime(CLOCK_REALTIME, &ts);
+	r = (ts.tv_nsec * 65537) ^ ((uintptr_t)&ts / 16 + (uintptr_t)template);
+	for (int i = 0; i < 6; i++, r >>= 5)
+		template[i] = 'A' + ( r & 15 ) + ( r & 16 ) * 2;
+
+	return template;
 }
 
 struct wlchewing_buffer *buffer_new(struct wl_shm *shm,
@@ -31,8 +40,8 @@ struct wlchewing_buffer *buffer_new(struct wl_shm *shm,
 	buffer->scale = scale;
 	buffer->shm = shm;
 
-	char *template=strdup("/wlchewing-XXXXXX");
-	char *name=mktemp(template); //TODO
+	char *template = strdup("/wlchewing-XXXXXX");
+	char *name = mktempname(template);
 	int fd = shm_open(name, O_RDWR | O_CREAT | O_EXCL, 0600);
 	if (fd < 0) {
 		wlchewing_err("Failed to shm_open");
