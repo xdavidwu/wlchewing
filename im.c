@@ -52,8 +52,6 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 			}
 			break;
 		case XKB_KEY_Right:
-			printf("chewing report %d\n",
-				chewing_cand_TotalChoice(state->chewing));
 			if (state->bottom_panel->selected_index
 					< chewing_cand_TotalChoice(
 						state->chewing) - 1) {
@@ -134,6 +132,7 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 			chewing_commit_String_static(state->chewing));
 	}
 	zwp_input_method_v2_commit(state->input_method, state->serial);
+	wl_display_roundtrip(state->display);
 	return true;
 }
 
@@ -148,13 +147,15 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 	printf(" xkb translated to %s\n", keysym_name);
 	if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
 		if (!im_key_press(state, keysym)){
-			// wlchewing_err("Forwarding not yet implemeted");
 			// forward, record that future release needs forwarding
 			zwp_virtual_keyboard_v1_key(state->virtual_keyboard,
 				time, key, key_state);
-			// TODO release on real release
-			zwp_virtual_keyboard_v1_key(state->virtual_keyboard,
-				time, key, WL_KEYBOARD_KEY_STATE_RELEASED);
+			wl_display_roundtrip(state->display);
+			struct wlchewing_keysym *newkey = calloc(1,
+				sizeof(struct wlchewing_keysym));
+			newkey->key = key;
+			wl_list_insert(&state->pending_forward_keysyms,
+				&newkey->link);
 		} else if (state->kb_rate != 0) {
 			state->last_keysym = keysym;
 			struct itimerspec timer_spec = {
@@ -173,7 +174,7 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 					strerror(errno));
 			}
 		}
-	} else {
+	} else if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
 		if (keysym == state->last_keysym) {
 			state->last_keysym = 0;
 			struct itimerspec timer_disarm = {0};
@@ -185,6 +186,18 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 			return;
 		}
 		// forward if needs forwarding
+		struct wlchewing_keysym *keysym;
+		wl_list_for_each(keysym, &state->pending_forward_keysyms,
+				link) {
+			if (keysym->key == key) {
+				zwp_virtual_keyboard_v1_key(
+					state->virtual_keyboard, time, key,
+					key_state);
+				wl_list_remove(&keysym->link);
+				free(keysym);
+				return;
+			}
+		}
 	}
 }
 
@@ -305,6 +318,8 @@ void im_setup(struct wlchewing_state *state) {
 
 	state->chewing = chewing_new();
 	state->xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+	wl_list_init(&state->pending_forward_keysyms);
+
 	wl_display_roundtrip(state->display);
 }
 

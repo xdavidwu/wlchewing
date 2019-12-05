@@ -13,6 +13,11 @@
 #include "text-input-unstable-v3-client-protocol.h"
 #include "virtual-keyboard-unstable-v1-client-protocol.h"
 
+struct wlchewing_keysym {
+	uint32_t key;
+	struct wl_list link;
+};
+
 struct wlchewing_state {
 	struct wl_display *display;
 	struct wl_compositor *compositor;
@@ -39,6 +44,8 @@ struct wlchewing_state {
 	xkb_keysym_t last_keysym;
 	int32_t kb_delay, kb_rate;
 	int timer_fd;
+
+	struct wl_list pending_forward_keysyms; // wlchewing_keysym
 
 	int32_t serial;
 };
