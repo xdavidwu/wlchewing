@@ -117,13 +117,29 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 
 	const char *precommit = chewing_buffer_String_static(state->chewing);
 	const char *bopomofo = chewing_bopomofo_String_static(state->chewing);
+	int chewing_cursor = chewing_cursor_Current(state->chewing);
+	// chewing_cursor here is counted in utf-8 characters, not in bytes
+	int byte_cursor = 0;
+	for (int i = 0; i < chewing_cursor ; i++) {
+		uint8_t byte = precommit[byte_cursor];
+		if (!(byte & 0x80)) {
+			byte_cursor += 1;
+		}
+		else {
+			while (byte & 0x80) {
+				byte <<= 1;
+				byte_cursor++;
+			}
+		}
+	}
 	char *preedit = calloc(strlen(precommit) + strlen(bopomofo) + 1,
 		sizeof(char));
-	strcat(preedit, precommit);
+	printf("cursor: %d\n", byte_cursor);
+	strncat(preedit, precommit, byte_cursor);
 	strcat(preedit, bopomofo);
-	int cursor_begin = chewing_cursor_Current(state->chewing);
+	strcat(preedit, &precommit[byte_cursor]);
 	zwp_input_method_v2_set_preedit_string(state->input_method, preedit,
-		cursor_begin, cursor_begin);
+		byte_cursor, byte_cursor + strlen(bopomofo));
 	free(preedit);
 	if (chewing_commit_Check(state->chewing)) {
 		zwp_input_method_v2_commit_string(state->input_method, 
