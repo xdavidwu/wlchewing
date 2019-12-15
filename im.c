@@ -115,18 +115,16 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 		}
 	}
 
-	char *preedit = chewing_buffer_String(state->chewing);
-	if (!strlen(preedit)) {
-		free(preedit);
-		preedit = strdup(chewing_bopomofo_String_static(state->chewing));
-	}
-	else {
-		preedit = strcat(preedit, chewing_bopomofo_String_static(
-			state->chewing));
-	}
+	const char *precommit = chewing_buffer_String_static(state->chewing);
+	const char *bopomofo = chewing_bopomofo_String_static(state->chewing);
+	char *preedit = calloc(strlen(precommit) + strlen(bopomofo) + 1,
+		sizeof(char));
+	strcat(preedit, precommit);
+	strcat(preedit, bopomofo);
 	int cursor_begin = chewing_cursor_Current(state->chewing);
 	zwp_input_method_v2_set_preedit_string(state->input_method, preedit,
 		cursor_begin, cursor_begin);
+	free(preedit);
 	if (chewing_commit_Check(state->chewing)) {
 		zwp_input_method_v2_commit_string(state->input_method, 
 			chewing_commit_String_static(state->chewing));
