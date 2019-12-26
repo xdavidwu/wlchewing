@@ -41,6 +41,7 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 		return false;
 	}
 	if (state->bottom_panel) {
+		bool need_update = false;
 		switch(keysym){
 		case XKB_KEY_Return:
 		case XKB_KEY_KP_Enter:
@@ -49,6 +50,7 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 			chewing_cand_close(state->chewing);
 			bottom_panel_destroy(state->bottom_panel);
 			state->bottom_panel = NULL;
+			need_update = true;
 			break;
 		case XKB_KEY_Left:
 		case XKB_KEY_KP_Left:
@@ -91,6 +93,9 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 		default:
 			// no-op
 			break;
+		}
+		if (!need_update){
+			return true;
 		}
 	} else {
 		// TODO if chewing preedit is empty, forward bs, del, arrows...
