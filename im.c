@@ -94,11 +94,11 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 			// no-op
 			break;
 		}
-		if (!need_update){
+		if (!need_update) {
 			return true;
 		}
 	} else {
-		// TODO if chewing preedit is empty, forward bs, del, arrows...
+		bool chewing_handled = true;
 		switch(keysym){
 		case XKB_KEY_BackSpace:
 			chewing_handle_Backspace(state->chewing);
@@ -121,6 +121,7 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 			break;
 		case XKB_KEY_Down:
 		case XKB_KEY_KP_Down:
+			chewing_handled = false;
 			chewing_cand_open(state->chewing);
 			if (chewing_cand_TotalChoice(state->chewing)) {
 				state->bottom_panel = bottom_panel_new(state);
@@ -132,6 +133,10 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 		default:
 			chewing_handle_Default(state->chewing,
 				(char)xkb_keysym_to_utf32(keysym));
+		}
+		if (!chewing_handled ||
+				chewing_keystroke_CheckIgnore(state->chewing)) {
+			return false;
 		}
 	}
 
