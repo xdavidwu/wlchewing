@@ -95,6 +95,8 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 			break;
 		}
 		if (!need_update) {
+			// We grabs all the keys when panel is there,
+			// as if it has the focus.
 			return true;
 		}
 	} else {
