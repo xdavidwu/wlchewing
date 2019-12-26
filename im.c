@@ -29,7 +29,14 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 		}
 		return false;
 	}
-	// TODO check other modifiers not used by us
+	if (xkb_state_mod_name_is_active(state->xkb_state, XKB_MOD_NAME_ALT,
+			XKB_STATE_MODS_EFFECTIVE) > 0 ||
+			xkb_state_mod_name_is_active(state->xkb_state,
+			XKB_MOD_NAME_LOGO, XKB_STATE_MODS_EFFECTIVE) > 0) {
+		// Alt and Logo are not used by us
+		return false;
+	}
+
 	if (state->forwarding) {
 		return false;
 	}
