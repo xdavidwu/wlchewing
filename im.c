@@ -42,8 +42,8 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 	}
 	if (state->bottom_panel) {
 		switch(keysym){
-		case XKB_KEY_KP_Enter:
 		case XKB_KEY_Return:
+		case XKB_KEY_KP_Enter:
 			chewing_cand_choose_by_index(state->chewing,
 				state->bottom_panel->selected_index);
 			chewing_cand_close(state->chewing);
@@ -51,6 +51,7 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 			state->bottom_panel = NULL;
 			break;
 		case XKB_KEY_Left:
+		case XKB_KEY_KP_Left:
 			if (state->bottom_panel->selected_index > 0) {
 				state->bottom_panel->selected_index--;
 				bottom_panel_render(state->bottom_panel,
@@ -59,6 +60,7 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 			}
 			break;
 		case XKB_KEY_Right:
+		case XKB_KEY_KP_Right:
 			if (state->bottom_panel->selected_index
 					< chewing_cand_TotalChoice(
 						state->chewing) - 1) {
@@ -69,11 +71,13 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 			}
 			break;
 		case XKB_KEY_Up:
+		case XKB_KEY_KP_Up:
 			chewing_cand_close(state->chewing);
 			bottom_panel_destroy(state->bottom_panel);
 			state->bottom_panel = NULL;
 			break;
 		case XKB_KEY_Down:
+		case XKB_KEY_KP_Down:
 			if (chewing_cand_list_has_next(state->chewing)) {
 				chewing_cand_list_next(state->chewing);
 			} else {
@@ -95,19 +99,23 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 			chewing_handle_Backspace(state->chewing);
 			break;
 		case XKB_KEY_Delete:
+		case XKB_KEY_KP_Delete:
 			chewing_handle_Del(state->chewing);
 			break;
-		case XKB_KEY_KP_Enter:
 		case XKB_KEY_Return:
+		case XKB_KEY_KP_Enter:
 			chewing_handle_Enter(state->chewing);
 			break;
 		case XKB_KEY_Left:
+		case XKB_KEY_KP_Left:
 			chewing_handle_Left(state->chewing);
 			break;
 		case XKB_KEY_Right:
+		case XKB_KEY_KP_Right:
 			chewing_handle_Right(state->chewing);
 			break;
 		case XKB_KEY_Down:
+		case XKB_KEY_KP_Down:
 			chewing_cand_open(state->chewing);
 			if (chewing_cand_TotalChoice(state->chewing)) {
 				state->bottom_panel = bottom_panel_new(state);
