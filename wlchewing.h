@@ -41,11 +41,12 @@ struct wlchewing_state {
 
 	struct xkb_context *xkb_context;
 	struct xkb_state *xkb_state;
+	char *xkb_keymap_string;
 	xkb_keysym_t last_keysym;
 	int32_t kb_delay, kb_rate;
 	int timer_fd;
 
-	struct wl_list pending_forward_keysyms; // wlchewing_keysym
+	struct wl_list pending_handled_keysyms; // wlchewing_keysym
 
 	int32_t serial;
 };

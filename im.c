@@ -25,6 +25,7 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 				state->input_method, "", 0, 0);
 			zwp_input_method_v2_commit(state->input_method,
 				state->serial);
+			wl_display_roundtrip(state->display);
 			return true;
 		}
 		return false;
@@ -161,7 +162,6 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 	}
 	char *preedit = calloc(strlen(precommit) + strlen(bopomofo) + 1,
 		sizeof(char));
-	printf("cursor: %d\n", byte_cursor);
 	strncat(preedit, precommit, byte_cursor);
 	strcat(preedit, bopomofo);
 	strcat(preedit, &precommit[byte_cursor]);
@@ -183,62 +183,64 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 	struct wlchewing_state *state = data;
 	xkb_keysym_t keysym = xkb_state_key_get_one_sym(state->xkb_state,
 		key + 8);
-	char keysym_name[64];
-	xkb_keysym_get_name(keysym, keysym_name, sizeof(keysym_name));
-	printf(" xkb translated to %s\n", keysym_name);
 	if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
 		if (!im_key_press(state, keysym)){
-			// forward, record that future release needs forwarding
 			zwp_virtual_keyboard_v1_key(state->virtual_keyboard,
 				time, key, key_state);
 			wl_display_roundtrip(state->display);
+		} else {
+			// record that we should not forward key release
 			struct wlchewing_keysym *newkey = calloc(1,
 				sizeof(struct wlchewing_keysym));
 			newkey->key = key;
-			wl_list_insert(&state->pending_forward_keysyms,
+			wl_list_insert(&state->pending_handled_keysyms,
 				&newkey->link);
-		} else if (state->kb_rate != 0) {
-			state->last_keysym = keysym;
-			struct itimerspec timer_spec = {
-				.it_interval = {
-					.tv_sec = 0,
-					.tv_nsec = 1000000000 / state->kb_rate,
-				},
-				.it_value = {
-					.tv_sec = 0,
-					.tv_nsec = state->kb_delay * 1000000,
-				},
-			};
-			if (timerfd_settime(state->timer_fd, 0, &timer_spec,
-					NULL) == -1) {
-				wlchewing_err("Failed to arm timer: %s",
-					strerror(errno));
+			if (state->kb_rate != 0) {
+				state->last_keysym = keysym;
+				struct itimerspec timer_spec = {
+					.it_interval = {
+						.tv_sec = 0,
+						.tv_nsec = 1000 * 1000 * 1000 /
+							state->kb_rate,
+					},
+					.it_value = {
+						.tv_sec = 0,
+						.tv_nsec = state->kb_delay *
+							1000 * 1000,
+					},
+				};
+				if (timerfd_settime(state->timer_fd, 0,
+						&timer_spec, NULL) == -1) {
+					wlchewing_err("Failed to arm timer: %s",
+						strerror(errno));
+				}
 			}
 		}
 	} else if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
-		if (keysym == state->last_keysym) {
-			state->last_keysym = 0;
-			struct itimerspec timer_disarm = {0};
-			if (timerfd_settime(state->timer_fd, 0, &timer_disarm,
-					NULL) == -1) {
-				wlchewing_err("Failed to disarm timer: %s",
-					strerror(errno));
-			}
-			return;
-		}
-		// forward if needs forwarding
-		struct wlchewing_keysym *keysym;
-		wl_list_for_each(keysym, &state->pending_forward_keysyms,
+		// find if we should not forward key release
+		struct wlchewing_keysym *mkeysym;
+		wl_list_for_each(mkeysym, &state->pending_handled_keysyms,
 				link) {
-			if (keysym->key == key) {
-				zwp_virtual_keyboard_v1_key(
-					state->virtual_keyboard, time, key,
-					key_state);
-				wl_list_remove(&keysym->link);
-				free(keysym);
+			if (mkeysym->key == key) {
+				wl_list_remove(&mkeysym->link);
+				free(mkeysym);
+				if (keysym == state->last_keysym) {
+					state->last_keysym = 0;
+					struct itimerspec timer_disarm = {0};
+					if (timerfd_settime(state->timer_fd, 0,
+							&timer_disarm,
+							NULL) == -1) {
+						wlchewing_err(
+							"Failed to disarm timer: %s",
+							strerror(errno));
+					}
+				}
 				return;
 			}
 		}
+		zwp_virtual_keyboard_v1_key(state->virtual_keyboard, time, key,
+			key_state);
+		wl_display_roundtrip(state->display);
 	}
 }
 
@@ -359,7 +361,7 @@ void im_setup(struct wlchewing_state *state) {
 
 	state->chewing = chewing_new();
 	state->xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-	wl_list_init(&state->pending_forward_keysyms);
+	wl_list_init(&state->pending_handled_keysyms);
 
 	wl_display_roundtrip(state->display);
 }
