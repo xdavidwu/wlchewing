@@ -323,7 +323,7 @@ static void handle_done(void *data,
 			state->input_method);
 		zwp_input_method_keyboard_grab_v2_add_listener(state->kb_grab,
 			&grab_listener, state);
-		wl_display_roundtrip(state->display);
+		state->activated = state->pending_activate;
 
 		if (!state->kb_grab) {
 			wlchewing_err("Failed to grab");
@@ -339,6 +339,7 @@ static void handle_done(void *data,
 		chewing_Reset(state->chewing);
 	}
 	state->activated = state->pending_activate;
+	wl_display_roundtrip(state->display);
 }
 
 static const struct zwp_input_method_v2_listener im_listener = {
