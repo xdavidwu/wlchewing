@@ -38,6 +38,7 @@ struct wlchewing_state {
 
 	ChewingContext *chewing;
 	bool forwarding;
+	bool eng_shift;
 
 	struct xkb_context *xkb_context;
 	struct xkb_state *xkb_state;

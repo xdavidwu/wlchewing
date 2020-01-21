@@ -22,6 +22,7 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 		if (keysym == XKB_KEY_space) {
 			// Chinese / English(forwarding) toggle
 			state->forwarding = !state->forwarding;
+			state->eng_shift = false;
 			chewing_Reset(state->chewing);
 			if (state->bottom_panel) {
 				bottom_panel_destroy(state->bottom_panel);
@@ -45,7 +46,8 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 	}
 
 	if (state->forwarding) {
-		return false;
+		return state->eng_shift = keysym == XKB_KEY_Shift_L ||
+			keysym == XKB_KEY_Shift_R;
 	}
 	if (state->bottom_panel) {
 		bool need_update = false;
@@ -136,6 +138,23 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 				state->bottom_panel = bottom_panel_new(state);
 				bottom_panel_render(state->bottom_panel,
 					state->chewing);
+				wl_display_roundtrip(state->display);
+				return true;
+			}
+			break;
+		case XKB_KEY_Shift_L:
+		case XKB_KEY_Shift_R:
+			// toggle to English, and commit the string
+			state->forwarding = true;
+			state->eng_shift = false;
+			if (chewing_buffer_Check(state->chewing)) {
+				// FIXME this is hackish
+				chewing_handle_Enter(state->chewing);
+			} else {
+				zwp_input_method_v2_set_preedit_string(
+					state->input_method, "", 0, 0);
+				zwp_input_method_v2_commit(state->input_method,
+					state->serial);
 				wl_display_roundtrip(state->display);
 				return true;
 			}
@@ -234,6 +253,16 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 			}
 		}
 	} else if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
+		if (state->forwarding && (keysym == XKB_KEY_Shift_L ||
+				keysym == XKB_KEY_Shift_R) &&
+				state->eng_shift) {
+			// shift pressed and released without other keys,
+			// switch back to Chinese mode
+			state->forwarding = false;
+			chewing_Reset(state->chewing);
+			return;
+		}
+
 		// find if we should not forward key release
 		struct wlchewing_keysym *mkeysym, *tmp;
 		wl_list_for_each_safe(mkeysym, tmp,
@@ -279,6 +308,7 @@ static void handle_modifiers(void *data, struct zwp_input_method_keyboard_grab_v
 	// forward modifiers
 	zwp_virtual_keyboard_v1_modifiers(state->virtual_keyboard,
 		mods_depressed, mods_latched, mods_locked, group);
+	wl_display_roundtrip(state->display);
 }
 
 static void handle_keymap(void *data, struct zwp_input_method_keyboard_grab_v2
