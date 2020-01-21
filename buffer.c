@@ -130,6 +130,7 @@ struct wlchewing_buffer *buffer_pool_get_buffer(struct wl_list *pool) {
 void buffer_pool_destroy(struct wl_list *pool) {
 	struct wlchewing_buffer *cur_buffer, *tmp;
 	wl_list_for_each_safe(cur_buffer, tmp, pool, link) {
+		wl_list_remove(&cur_buffer->link);
 		buffer_destroy(cur_buffer);
 	}
 	free(pool);
