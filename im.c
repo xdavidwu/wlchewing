@@ -5,6 +5,12 @@
 
 #include "wlchewing.h"
 
+static int32_t get_millis() {
+	struct timespec spec;
+	clock_gettime(CLOCK_MONOTONIC, &spec);
+	return spec.tv_sec * 1000 + spec.tv_nsec / (1000 * 1000);
+}
+
 static void noop() {
 	// no-op
 }
@@ -187,6 +193,16 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 		if (!im_key_press(state, keysym)){
 			zwp_virtual_keyboard_v1_key(state->virtual_keyboard,
 				time, key, key_state);
+			// record press sent keys,
+			// to pop pending release on deactivate
+			struct wlchewing_keysym *newkey = calloc(1,
+				sizeof(struct wlchewing_keysym));
+			newkey->key = key;
+			wl_list_insert(&state->press_sent_keysyms,
+				&newkey->link);
+			// update the millis offset so we can make it more
+			// accurate when we pop pending release
+			state->millis_offset = get_millis() - time;
 			wl_display_roundtrip(state->display);
 		} else {
 			// record that we should not forward key release
@@ -218,9 +234,9 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 		}
 	} else if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
 		// find if we should not forward key release
-		struct wlchewing_keysym *mkeysym;
-		wl_list_for_each(mkeysym, &state->pending_handled_keysyms,
-				link) {
+		struct wlchewing_keysym *mkeysym, *tmp;
+		wl_list_for_each_safe(mkeysym, tmp,
+				&state->pending_handled_keysyms, link) {
 			if (mkeysym->key == key) {
 				wl_list_remove(&mkeysym->link);
 				free(mkeysym);
@@ -240,6 +256,14 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 		}
 		zwp_virtual_keyboard_v1_key(state->virtual_keyboard, time, key,
 			key_state);
+		wl_list_for_each_safe(mkeysym, tmp,
+				&state->press_sent_keysyms, link) {
+			if (mkeysym->key == key) {
+				wl_list_remove(&mkeysym->link);
+				free(mkeysym);
+				break;
+			}
+		}
 		wl_display_roundtrip(state->display);
 	}
 }
@@ -337,6 +361,16 @@ static void handle_done(void *data,
 			state->bottom_panel = NULL;
 		}
 		chewing_Reset(state->chewing);
+
+		struct wlchewing_keysym *mkeysym, *tmp;
+		wl_list_for_each_safe(mkeysym, tmp,
+				&state->press_sent_keysyms, link) {
+			zwp_virtual_keyboard_v1_key(state->virtual_keyboard,
+				get_millis() - state->millis_offset,
+				mkeysym->key, WL_KEYBOARD_KEY_STATE_RELEASED);
+			wl_list_remove(&mkeysym->link);
+			free(mkeysym);
+		}
 	}
 	state->activated = state->pending_activate;
 	wl_display_roundtrip(state->display);
@@ -367,6 +401,7 @@ void im_setup(struct wlchewing_state *state) {
 	state->chewing = chewing_new();
 	state->xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 	wl_list_init(&state->pending_handled_keysyms);
+	wl_list_init(&state->press_sent_keysyms);
 
 	wl_display_roundtrip(state->display);
 }

@@ -47,6 +47,8 @@ struct wlchewing_state {
 	int timer_fd;
 
 	struct wl_list pending_handled_keysyms; // wlchewing_keysym
+	struct wl_list press_sent_keysyms; // wlchewing_keysym
+	int32_t millis_offset;
 
 	int32_t serial;
 };
