@@ -15,6 +15,18 @@ static void noop() {
 	// no-op
 }
 
+static bool should_be_handled_by_chewing_default(xkb_keysym_t keysym) {
+	// [`0-9-=a-z[]\;',./ ]
+	return (keysym >= XKB_KEY_comma && keysym <= XKB_KEY_9) || // ,-./0-9
+		(keysym >= XKB_KEY_quoteleft && keysym <= XKB_KEY_z) || // `a-z
+		(keysym >= XKB_KEY_bracketleft &&
+		keysym <= XKB_KEY_bracketright) || // [\]
+		keysym == XKB_KEY_semicolon ||
+		keysym == XKB_KEY_apostrophe ||
+		keysym == XKB_KEY_equal ||
+		keysym == XKB_KEY_space;
+}
+
 bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 	// return false if unhandled, need forwarding
 	if (xkb_state_mod_name_is_active(state->xkb_state, XKB_MOD_NAME_CTRL,
@@ -109,7 +121,7 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 			return true;
 		}
 	} else {
-		bool chewing_handled = true;
+		bool handled = true;
 		switch(keysym){
 		case XKB_KEY_BackSpace:
 			chewing_handle_Backspace(state->chewing);
@@ -138,7 +150,7 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 			break;
 		case XKB_KEY_Down:
 		case XKB_KEY_KP_Down:
-			chewing_handled = false;
+			handled = false;
 			chewing_cand_open(state->chewing);
 			if (chewing_cand_TotalChoice(state->chewing)) {
 				state->bottom_panel = bottom_panel_new(state);
@@ -166,11 +178,19 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 			}
 			break;
 		default:
-			chewing_handle_Default(state->chewing,
-				(char)xkb_keysym_to_utf32(keysym));
+			if (should_be_handled_by_chewing_default(keysym)) {
+				chewing_handle_Default(state->chewing,
+					(char)xkb_keysym_to_utf32(keysym));
+			} else {
+				bool has_content =
+					chewing_buffer_Check(state->chewing) ||
+					chewing_bopomofo_Check(state->chewing);
+				handled = has_content && (
+					(keysym == XKB_KEY_Up) ||
+					(keysym == XKB_KEY_KP_Up));
+			}
 		}
-		if (!chewing_handled ||
-				chewing_keystroke_CheckIgnore(state->chewing)) {
+		if (!handled || chewing_keystroke_CheckIgnore(state->chewing)) {
 			return false;
 		}
 	}
