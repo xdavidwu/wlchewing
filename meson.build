@@ -6,6 +6,7 @@ cairo = dependency('cairo')
 pangocairo = dependency('pangocairo')
 chewing = dependency('chewing')
 xkbcommon = dependency('xkbcommon')
+systemd = dependency('libsystemd')
 cc = meson.get_compiler('c')
 rt = cc.find_library('rt', required: false)
 scanner = find_program('wayland-scanner')
@@ -32,4 +33,7 @@ protocols_headers=[
 lib_protocols = static_library('protocols', protocols_src + protocols_headers, dependencies: wl_client)
 protocols_dep = declare_dependency(link_with: lib_protocols, sources: protocols_headers)
 
-executable('wlchewing', ['main.c', 'config.c', 'bottom-panel.c', 'buffer.c', 'im.c'], dependencies: [chewing, xkbcommon, cairo, pangocairo, protocols_dep, rt], install: true)
+executable('wlchewing', ['main.c', 'config.c', 'bottom-panel.c', 'buffer.c', 'im.c', 'sni.c'], dependencies: [chewing, xkbcommon, cairo, pangocairo, protocols_dep, rt, systemd], install: true)
+
+install_data('wlchewing-bopomofo.svg', install_dir : 'share/icons/hicolor/scalable/apps')
+install_data('wlchewing-eng.svg', install_dir : 'share/icons/hicolor/scalable/apps')

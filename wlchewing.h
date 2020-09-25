@@ -9,6 +9,7 @@
 #include <xkbcommon/xkbcommon.h>
 
 #include "bottom-panel.h"
+#include "sni.h"
 #include "input-method-unstable-v2-client-protocol.h"
 #include "text-input-unstable-v3-client-protocol.h"
 #include "virtual-keyboard-unstable-v1-client-protocol.h"
@@ -35,6 +36,8 @@ struct wlchewing_state {
 
 	struct zwlr_layer_shell_v1 *layer_shell;
 	struct wlchewing_bottom_panel *bottom_panel;
+
+	struct wlchewing_sni *sni;
 
 	ChewingContext *chewing;
 	bool forwarding;

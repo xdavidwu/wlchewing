@@ -36,6 +36,7 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 		if (keysym == XKB_KEY_space) {
 			// Chinese / English(forwarding) toggle
 			state->forwarding = !state->forwarding;
+			sni_set_icon(state->sni, state->forwarding);
 			state->eng_shift = false;
 			chewing_Reset(state->chewing);
 			if (state->bottom_panel) {
@@ -167,6 +168,7 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 		case XKB_KEY_Shift_R:
 			// toggle to English, and commit the string
 			state->forwarding = true;
+			sni_set_icon(state->sni, state->forwarding);
 			state->eng_shift = false;
 			if (chewing_buffer_Check(state->chewing)) {
 				// FIXME this is hackish
@@ -293,6 +295,7 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 			// shift pressed and released without other keys,
 			// switch back to Chinese mode
 			state->forwarding = false;
+			sni_set_icon(state->sni, state->forwarding);
 			chewing_Reset(state->chewing);
 			return;
 		}
