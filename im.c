@@ -27,6 +27,8 @@ static bool should_be_handled_by_chewing_default(xkb_keysym_t keysym) {
 		keysym == XKB_KEY_space;
 }
 
+static void vte_hack(struct wlchewing_state *state);
+
 bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 	// return false if unhandled, need forwarding
 	if (xkb_state_mod_name_is_active(state->xkb_state, XKB_MOD_NAME_CTRL,
@@ -45,6 +47,7 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 			zwp_input_method_v2_commit(state->input_method,
 				state->serial);
 			wl_display_roundtrip(state->display);
+			vte_hack(state);
 			return true;
 		}
 		return false;
@@ -174,6 +177,7 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 				zwp_input_method_v2_commit(state->input_method,
 					state->serial);
 				wl_display_roundtrip(state->display);
+				vte_hack(state);
 				return true;
 			}
 			break;
@@ -217,6 +221,7 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 	strncat(preedit, precommit, byte_cursor);
 	strcat(preedit, bopomofo);
 	strcat(preedit, &precommit[byte_cursor]);
+	bool need_hack = strlen(preedit) == 0;
 	zwp_input_method_v2_set_preedit_string(state->input_method, preedit,
 		byte_cursor, byte_cursor + strlen(bopomofo));
 	free(preedit);
@@ -226,6 +231,9 @@ bool im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 	}
 	zwp_input_method_v2_commit(state->input_method, state->serial);
 	wl_display_roundtrip(state->display);
+	if (need_hack) {
+		vte_hack(state);
+	}
 	return true;
 }
 
@@ -472,4 +480,12 @@ void im_destory(struct wlchewing_state *state) {
 		bottom_panel_destroy(state->bottom_panel);
 		state->bottom_panel = NULL;
 	}
+}
+
+static void vte_hack(struct wlchewing_state *state) {
+	zwp_input_method_v2_destroy(state->input_method);
+	state->input_method = zwp_input_method_manager_v2_get_input_method(
+		state->input_method_manager, state->seat);
+	zwp_input_method_v2_add_listener(state->input_method, &im_listener, state);
+	wl_display_roundtrip(state->display);
 }
