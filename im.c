@@ -289,6 +289,17 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 			}
 		}
 	} else if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
+		if (state->forwarding && (keysym == XKB_KEY_Shift_L ||
+				keysym == XKB_KEY_Shift_R) &&
+				state->eng_shift) {
+			// shift pressed and released without other keys,
+			// switch back to Chinese mode
+			state->forwarding = false;
+			sni_set_icon(state->sni, state->forwarding);
+			chewing_Reset(state->chewing);
+			return;
+		}
+
 		// find if we should not forward key release
 		struct wlchewing_keysym *mkeysym, *tmp;
 		wl_list_for_each_safe(mkeysym, tmp,
@@ -307,16 +318,6 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 							strerror(errno));
 					}
 				}
-				if (state->forwarding && (keysym == XKB_KEY_Shift_L ||
-						keysym == XKB_KEY_Shift_R) &&
-						state->eng_shift) {
-					// shift pressed and released without other keys,
-					// switch back to Chinese mode
-					state->forwarding = false;
-					sni_set_icon(state->sni, state->forwarding);
-					chewing_Reset(state->chewing);
-				}
-
 				return;
 			}
 		}
