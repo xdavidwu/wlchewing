@@ -15,29 +15,19 @@ static void noop() {
 	// no-op
 }
 
-static bool should_be_handled_by_chewing_default(xkb_keysym_t keysym) {
-	// [`0-9-=a-z[]\;',./ ]
-	return (keysym >= XKB_KEY_comma && keysym <= XKB_KEY_9) || // ,-./0-9
-		(keysym >= XKB_KEY_quoteleft && keysym <= XKB_KEY_z) || // `a-z
-		(keysym >= XKB_KEY_bracketleft &&
-		keysym <= XKB_KEY_bracketright) || // [\]
-		keysym == XKB_KEY_semicolon ||
-		keysym == XKB_KEY_apostrophe ||
-		keysym == XKB_KEY_equal ||
-		keysym == XKB_KEY_space;
-}
-
 static void vte_hack(struct wlchewing_state *state);
 
-int im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
-	// return false if unhandled, need forwarding
+int im_key_press(struct wlchewing_state *state, uint32_t key) {
+	xkb_keysym_t keysym = xkb_state_key_get_one_sym(state->xkb_state,
+		key + 8);
+
 	if (xkb_state_mod_name_is_active(state->xkb_state, XKB_MOD_NAME_CTRL,
 			XKB_STATE_MODS_EFFECTIVE) > 0) {
 		if (keysym == XKB_KEY_space) {
 			// Chinese / English(forwarding) toggle
 			state->forwarding = !state->forwarding;
 			sni_set_icon(state->sni, state->forwarding);
-			state->eng_shift = false;
+			state->shift_only = false;
 			chewing_Reset(state->chewing);
 			if (state->bottom_panel) {
 				bottom_panel_destroy(state->bottom_panel);
@@ -61,14 +51,18 @@ int im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 		return KEY_HANDLE_FORWARD;
 	}
 
+	state->shift_only = keysym == XKB_KEY_Shift_L ||
+		keysym == XKB_KEY_Shift_R;
+	/* Shift is either used as modifier or mode-switch,
+	 * we should not arm timer in later case or it may reset our
+	 * state used to check whether only shift is pressed.
+	 */
 	if (state->forwarding) {
-		/* In eng mode, shift is either used as modifier or mode-switch
-		 * we should not arm timer in later case or it may reset our
-		 * state used to check whether only shift is pressed.
-		 */
-		return (state->eng_shift = keysym == XKB_KEY_Shift_L ||
-			keysym == XKB_KEY_Shift_R) ? 0 : KEY_HANDLE_FORWARD;
+		return state->shift_only ? 0 : KEY_HANDLE_FORWARD;
+	} else if (state->shift_only) {
+		return 0;
 	}
+
 	if (state->bottom_panel) {
 		bool need_update = false;
 		switch(keysym){
@@ -168,27 +162,10 @@ int im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym) {
 				return KEY_HANDLE_ARM_TIMER;
 			}
 			break;
-		case XKB_KEY_Shift_L:
-		case XKB_KEY_Shift_R:
-			// toggle to English, and commit the string
-			state->forwarding = true;
-			sni_set_icon(state->sni, state->forwarding);
-			state->eng_shift = false;
-			if (chewing_buffer_Check(state->chewing)) {
-				// FIXME this is hackish
-				chewing_handle_Enter(state->chewing);
-			} else {
-				zwp_input_method_v2_set_preedit_string(
-					state->input_method, "", 0, 0);
-				zwp_input_method_v2_commit(state->input_method,
-					state->serial);
-				wl_display_roundtrip(state->display);
-				vte_hack(state);
-				return KEY_HANDLE_ARM_TIMER;
-			}
-			break;
 		default:
-			if (should_be_handled_by_chewing_default(keysym)) {
+			// printable characters
+			if (keysym >= XKB_KEY_space &&
+					keysym <= XKB_KEY_asciitilde) {
 				chewing_handle_Default(state->chewing,
 					(char)xkb_keysym_to_utf32(keysym));
 			} else {
@@ -247,10 +224,8 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 		*zwp_input_method_keyboard_grab_v2, uint32_t serial,
 		uint32_t time, uint32_t key, uint32_t key_state) {
 	struct wlchewing_state *state = data;
-	xkb_keysym_t keysym = xkb_state_key_get_one_sym(state->xkb_state,
-		key + 8);
 	if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-		int handle_action = im_key_press(state, keysym);
+		int handle_action = im_key_press(state, key);
 		if (handle_action & KEY_HANDLE_FORWARD) {
 			zwp_virtual_keyboard_v1_key(state->virtual_keyboard,
 				time, key, key_state);
@@ -274,7 +249,7 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 			wl_list_insert(&state->pending_handled_keysyms,
 				&newkey->link);
 			if (state->kb_rate != 0) {
-				state->last_keysym = keysym;
+				state->last_key = key;
 				struct itimerspec timer_spec = {
 					.it_interval = {
 						.tv_sec = 0,
@@ -295,14 +270,33 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 			}
 		}
 	} else if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
-		if (state->forwarding && (keysym == XKB_KEY_Shift_L ||
-				keysym == XKB_KEY_Shift_R) &&
-				state->eng_shift) {
-			// shift pressed and released without other keys,
-			// switch back to Chinese mode
-			state->forwarding = false;
-			sni_set_icon(state->sni, state->forwarding);
-			chewing_Reset(state->chewing);
+		xkb_keysym_t keysym = xkb_state_key_get_one_sym(
+				state->xkb_state, key + 8);
+		if ((keysym == XKB_KEY_Shift_L || keysym == XKB_KEY_Shift_R) &&
+				state->shift_only) {
+			if (!state->forwarding) {
+				// toggle to English, and commit the string
+				state->forwarding = true;
+				sni_set_icon(state->sni, state->forwarding);
+				if (chewing_buffer_Check(state->chewing)) {
+					// FIXME this is hackish
+					chewing_handle_Enter(state->chewing);
+					zwp_input_method_v2_commit_string(state->input_method,
+						chewing_commit_String_static(state->chewing));
+				}
+				zwp_input_method_v2_set_preedit_string(
+					state->input_method, "", 0, 0);
+				zwp_input_method_v2_commit(state->input_method,
+					state->serial);
+				wl_display_roundtrip(state->display);
+				vte_hack(state);
+			} else {
+				// shift pressed and released without other keys,
+				// switch back to Chinese mode
+				state->forwarding = false;
+				sni_set_icon(state->sni, state->forwarding);
+				chewing_Reset(state->chewing);
+			}
 			return;
 		}
 
@@ -313,8 +307,8 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 			if (mkeysym->key == key) {
 				wl_list_remove(&mkeysym->link);
 				free(mkeysym);
-				if (keysym == state->last_keysym) {
-					state->last_keysym = 0;
+				if (key == state->last_key) {
+					state->last_key = 0;
 					struct itimerspec timer_disarm = {0};
 					if (timerfd_settime(state->timer_fd, 0,
 							&timer_disarm,

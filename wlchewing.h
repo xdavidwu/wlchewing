@@ -41,12 +41,12 @@ struct wlchewing_state {
 
 	ChewingContext *chewing;
 	bool forwarding;
-	bool eng_shift;
+	bool shift_only;
 
 	struct xkb_context *xkb_context;
 	struct xkb_state *xkb_state;
 	char *xkb_keymap_string;
-	xkb_keysym_t last_keysym;
+	uint32_t last_key;
 	int32_t kb_delay, kb_rate;
 	int timer_fd;
 
@@ -61,7 +61,7 @@ void im_setup(struct wlchewing_state *state);
 
 void im_destory(struct wlchewing_state *state);
 
-int im_key_press(struct wlchewing_state *state, xkb_keysym_t keysym);
+int im_key_press(struct wlchewing_state *state, uint32_t key);
 
 #define wlchewing_err(fmt, ...) fprintf(stderr, "[%s:%d] " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 

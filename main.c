@@ -157,7 +157,7 @@ int main(int argc, char **argv) {
 		} else if (event_caught.data.fd == state->timer_fd) {
 			uint64_t count = 0;
 			read(state->timer_fd, &count, sizeof(uint64_t));
-			im_key_press(state, state->last_keysym);
+			im_key_press(state, state->last_key);
 		} else if (event_caught.data.fd == bus_fd) {
 			sd_bus_process(state->sni->bus, NULL);
 		}
