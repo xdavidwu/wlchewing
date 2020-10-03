@@ -366,6 +366,7 @@ static void handle_keymap(void *data, struct zwp_input_method_keyboard_grab_v2
 		// forward keymap
 		zwp_virtual_keyboard_v1_keymap(state->virtual_keyboard,
 			format, fd, size);
+		wl_display_roundtrip(state->display);
 	}
 	munmap(keymap_string, size);
 }
