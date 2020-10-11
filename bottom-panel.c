@@ -105,6 +105,7 @@ struct wlchewing_bottom_panel *bottom_panel_new(
 		ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM |
 		ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT |
 		ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
+	zwlr_layer_surface_v1_set_size(panel->layer_surface, 0, panel->height);
 	wl_surface_commit(panel->wl_surface);
 	wl_display_roundtrip(state->display);
 
