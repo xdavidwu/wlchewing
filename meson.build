@@ -1,4 +1,4 @@
-project('wlchewing-experiments',['c'])
+project('wlchewing',['c'])
 
 wl_client = dependency('wayland-client')
 wl_protocols = dependency('wayland-protocols')
@@ -10,30 +10,46 @@ systemd = dependency('libsystemd')
 cc = meson.get_compiler('c')
 rt = cc.find_library('rt', required: false)
 scanner = find_program('wayland-scanner')
-scanner_private_code = generator(scanner, output: '@BASENAME@-protocol.c', arguments: ['private-code', '@INPUT@', '@OUTPUT@'])
-scanner_client_header = generator(scanner, output: '@BASENAME@-client-protocol.h', arguments: ['client-header', '@INPUT@', '@OUTPUT@'])
+scanner_private_code = generator(scanner,
+  output: '@BASENAME@-protocol.c',
+  arguments: ['private-code', '@INPUT@', '@OUTPUT@'])
+scanner_client_header = generator(scanner,
+  output: '@BASENAME@-client-protocol.h',
+  arguments: ['client-header', '@INPUT@', '@OUTPUT@'])
 
 wl_protocols_dir = wl_protocols.get_pkgconfig_variable('pkgdatadir')
-xdg_shell = wl_protocols_dir + '/stable/xdg-shell/xdg-shell.xml'
-text_input_path = wl_protocols_dir + '/unstable/text-input/text-input-unstable-v3.xml'
-protocols_src=[
-  scanner_private_code.process('input-method-unstable-v2.xml'),
-  scanner_private_code.process(text_input_path),
-  scanner_private_code.process('virtual-keyboard-unstable-v1.xml'),
-  scanner_private_code.process('wlr-layer-shell-unstable-v1.xml'),
-  scanner_private_code.process(xdg_shell)
+protocols = [
+  'protocols' / 'input-method-unstable-v2.xml',
+  wl_protocols_dir / 'unstable' / 'text-input' /'text-input-unstable-v3.xml',
+  'protocols' / 'virtual-keyboard-unstable-v1.xml',
+  'protocols' / 'wlr-layer-shell-unstable-v1.xml',
+  wl_protocols_dir / 'stable' / 'xdg-shell' / 'xdg-shell.xml',
 ]
-protocols_headers=[
-  scanner_client_header.process('input-method-unstable-v2.xml'),
-  scanner_client_header.process(text_input_path),
-  scanner_client_header.process('virtual-keyboard-unstable-v1.xml'),
-  scanner_client_header.process('wlr-layer-shell-unstable-v1.xml'),
-  scanner_client_header.process(xdg_shell)
+lib_protocols = static_library('protocols',
+  scanner_private_code.process(protocols), dependencies: [wl_client])
+protocols_dep = declare_dependency(link_with: lib_protocols,
+  sources: scanner_client_header.process(protocols))
+
+sources = [
+  'bottom-panel.c',
+  'buffer.c',
+  'config.c',
+  'im.c',
+  'main.c',
+  'sni.c',
 ]
-lib_protocols = static_library('protocols', protocols_src + protocols_headers, dependencies: wl_client)
-protocols_dep = declare_dependency(link_with: lib_protocols, sources: protocols_headers)
 
-executable('wlchewing', ['main.c', 'config.c', 'bottom-panel.c', 'buffer.c', 'im.c', 'sni.c'], dependencies: [chewing, xkbcommon, cairo, pangocairo, protocols_dep, rt, systemd], install: true)
+executable('wlchewing', sources,
+  dependencies: [
+    chewing,
+    xkbcommon,
+    cairo,
+    pangocairo,
+    protocols_dep,
+    rt,
+    systemd,
+  ], install: true)
 
-install_data('wlchewing-bopomofo.svg', install_dir : 'share/icons/hicolor/scalable/apps')
-install_data('wlchewing-eng.svg', install_dir : 'share/icons/hicolor/scalable/apps')
+install_data(
+  ['icons' / 'wlchewing-bopomofo.svg', 'icons' / 'wlchewing-eng.svg'],
+  install_dir : 'share' / 'icons' / 'hicolor' / 'scalable' / 'apps')
