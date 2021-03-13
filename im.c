@@ -431,15 +431,7 @@ static void handle_done(void *data,
 		}
 		chewing_Reset(state->chewing);
 
-		struct wlchewing_keysym *mkeysym, *tmp;
-		wl_list_for_each_safe(mkeysym, tmp,
-				&state->press_sent_keysyms, link) {
-			zwp_virtual_keyboard_v1_key(state->virtual_keyboard,
-				get_millis() - state->millis_offset,
-				mkeysym->key, WL_KEYBOARD_KEY_STATE_RELEASED);
-			wl_list_remove(&mkeysym->link);
-			free(mkeysym);
-		}
+		im_release_all_keys(state);
 	}
 	state->activated = state->pending_activate;
 	wl_display_roundtrip(state->display);
@@ -454,6 +446,18 @@ static const struct zwp_input_method_v2_listener im_listener = {
 	.done = handle_done,
 	.unavailable = handle_unavailable,
 };
+
+void im_release_all_keys(struct wlchewing_state *state) {
+	struct wlchewing_keysym *mkeysym, *tmp;
+	wl_list_for_each_safe(mkeysym, tmp,
+			&state->press_sent_keysyms, link) {
+		zwp_virtual_keyboard_v1_key(state->virtual_keyboard,
+			get_millis() - state->millis_offset,
+			mkeysym->key, WL_KEYBOARD_KEY_STATE_RELEASED);
+		wl_list_remove(&mkeysym->link);
+		free(mkeysym);
+	}
+}
 
 /* TODO for adding panel with input-method support
  * currently only panel with wlr-layer-shell

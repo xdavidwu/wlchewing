@@ -63,6 +63,8 @@ void im_destory(struct wlchewing_state *state);
 
 int im_key_press(struct wlchewing_state *state, uint32_t key);
 
+void im_release_all_keys(struct wlchewing_state *state);
+
 #define wlchewing_err(fmt, ...) fprintf(stderr, "[%s:%d] " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 
 #define KEY_HANDLE_FORWARD	(1 << 0)

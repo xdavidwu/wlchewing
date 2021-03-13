@@ -1,12 +1,21 @@
 #include <assert.h>
 #include <errno.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/epoll.h>
 #include <sys/timerfd.h>
 
 #include "wlchewing.h"
 #include "bottom-panel.h"
 #include "sni.h"
+
+struct wlchewing_state global_state = {0};
+
+static void handle_signal(int signo) {
+	im_release_all_keys(&global_state);
+	wl_display_roundtrip(global_state.display);
+	raise(signo);
+}
 
 static const struct wl_output_listener output_listener;
 
@@ -60,12 +69,7 @@ static const struct wl_output_listener output_listener = {
 };
 
 int main(int argc, char **argv) {
-	struct wlchewing_state *state = calloc(1,
-		sizeof(struct wlchewing_state));
-	if (state == NULL) {
-		wlchewing_err("Failed to calloc state");
-		return EXIT_FAILURE;
-	}
+	struct wlchewing_state *state = &global_state;
 	state->display = wl_display_connect(NULL);
 	if (state->display == NULL) {
 		wlchewing_err("Failed to create display");
@@ -118,8 +122,7 @@ int main(int argc, char **argv) {
 			.fd = state->timer_fd,
 		},
 	};
-	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, state->timer_fd, &timer_epoll)
-			== -1) {
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, state->timer_fd, &timer_epoll) < 0) {
 		wlchewing_err("Failed to add timer epoll: %s", strerror(errno));
 		return EXIT_FAILURE;
 	}
@@ -131,7 +134,7 @@ int main(int argc, char **argv) {
 	}
 	int bus_fd = sni_setup(state->sni);
 	if (bus_fd < 0) {
-		wlchewing_err("Failed to setup bus: %s", strerror(-bus_fd));
+		wlchewing_err("Failed to setup dbus: %s", strerror(-bus_fd));
 		return EXIT_FAILURE;
 	}
 	struct epoll_event bus_epoll = {
@@ -140,13 +143,26 @@ int main(int argc, char **argv) {
 			.fd = bus_fd,
 		},
 	};
-	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, bus_fd, &bus_epoll)
-			== -1) {
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, bus_fd, &bus_epoll) < 0) {
 		wlchewing_err("Failed to add bus epoll: %s", strerror(errno));
 		return EXIT_FAILURE;
 	}
 
 	im_setup(state);
+
+	struct sigaction sa;
+	sa.sa_handler = handle_signal;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = SA_RESETHAND;
+
+	if (sigaction(SIGTERM, &sa, NULL) < 0) {
+		wlchewing_err("Failed to set SIGTERM handler: %s", strerror(errno));
+		return EXIT_FAILURE;
+	}
+	if (sigaction(SIGINT, &sa, NULL) < 0) {
+		wlchewing_err("Failed to set SIGINT handler: %s", strerror(errno));
+		return EXIT_FAILURE;
+	}
 
 	struct epoll_event event_caught;
 	while (epoll_wait(epoll_fd, &event_caught, 1, -1)) {
