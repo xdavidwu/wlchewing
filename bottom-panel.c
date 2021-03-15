@@ -55,7 +55,15 @@ static void bottom_panel_configure(struct wlchewing_bottom_panel *panel,
 	panel->height = height / PANGO_SCALE;
 	wl_surface_attach(panel->wl_surface, buffer->wl_buffer, 0, 0);
 	zwlr_layer_surface_v1_set_size(panel->layer_surface, 0, panel->height);
-	zwlr_layer_surface_v1_set_exclusive_zone(panel->layer_surface, panel->height);
+
+	if (state->config->dock == DOCK_DOCK) {
+		zwlr_layer_surface_v1_set_exclusive_zone(panel->layer_surface, panel->height);
+	} else if (state->config->dock == DOCK_YEILD) {
+		zwlr_layer_surface_v1_set_exclusive_zone(panel->layer_surface, 0);
+	} else {
+		zwlr_layer_surface_v1_set_exclusive_zone(panel->layer_surface, -1);
+	}
+
 	wl_surface_commit(panel->wl_surface);
 	wl_display_roundtrip(state->display);
 	wl_surface_set_buffer_scale(panel->wl_surface, panel->scale);

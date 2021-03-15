@@ -76,7 +76,6 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 	if (config_read_opts(argc, argv, state->config) < 0) {
-		wlchewing_err("Invalid command line options");
 		return EXIT_FAILURE;
 	}
 
