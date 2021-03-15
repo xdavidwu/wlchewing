@@ -68,8 +68,18 @@ static const struct wl_output_listener output_listener = {
 	.done = noop
 };
 
-int main(int argc, char **argv) {
+int main(int argc, char *argv[]) {
 	struct wlchewing_state *state = &global_state;
+	state->config = config_new();
+	if (!state->config) {
+		wlchewing_err("Failed to allocate space for config");
+		return EXIT_FAILURE;
+	}
+	if (config_read_opts(argc, argv, state->config) < 0) {
+		wlchewing_err("Invalid command line options");
+		return EXIT_FAILURE;
+	}
+
 	state->display = wl_display_connect(NULL);
 	if (state->display == NULL) {
 		wlchewing_err("Failed to create display");

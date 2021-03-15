@@ -9,6 +9,7 @@
 #include <xkbcommon/xkbcommon.h>
 
 #include "bottom-panel.h"
+#include "config.h"
 #include "sni.h"
 #include "input-method-unstable-v2-client-protocol.h"
 #include "text-input-unstable-v3-client-protocol.h"
@@ -20,6 +21,8 @@ struct wlchewing_keysym {
 };
 
 struct wlchewing_state {
+	struct wlchewing_config *config;
+
 	struct wl_display *display;
 	struct wl_compositor *compositor;
 	struct wl_shm *shm;

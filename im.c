@@ -464,6 +464,9 @@ void im_release_all_keys(struct wlchewing_state *state) {
  */
 
 void im_setup(struct wlchewing_state *state) {
+	state->forwarding = state->config->start_eng;
+	sni_set_icon(state->sni, state->forwarding);
+
 	state->input_method = zwp_input_method_manager_v2_get_input_method(
 		state->input_method_manager, state->seat);
 	zwp_input_method_v2_add_listener(state->input_method, &im_listener, state);
