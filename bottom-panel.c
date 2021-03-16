@@ -48,11 +48,20 @@ static void bottom_panel_configure(struct wlchewing_bottom_panel *panel,
 	struct wlchewing_buffer *buffer = buffer_new(state->shm,
 		panel->width, panel->height, panel->scale);
 	assert(buffer);
+
 	panel->layout = pango_cairo_create_layout(buffer->cairo);
+	if (state->config->font) {
+		PangoFontDescription *desc =
+			pango_font_description_from_string(state->config->font);
+		pango_layout_set_font_description(panel->layout, desc);
+		pango_font_description_free(desc);
+	}
+
 	pango_layout_set_text(panel->layout, "哈嘍 PangoCairo", -1);
 	int width, height;
 	pango_layout_get_size(panel->layout, &width, &height);
 	panel->height = height / PANGO_SCALE;
+
 	wl_surface_attach(panel->wl_surface, buffer->wl_buffer, 0, 0);
 	zwlr_layer_surface_v1_set_size(panel->layer_surface, 0, panel->height);
 
@@ -117,7 +126,7 @@ struct wlchewing_bottom_panel *bottom_panel_new(
 	wl_surface_commit(panel->wl_surface);
 	wl_display_roundtrip(state->display);
 
-	// set scale and height TODO: set font options there
+	// set font, scale and height
 	bottom_panel_configure(panel, state);
 
 	panel->buffer_pool = buffer_pool_new(state->shm,

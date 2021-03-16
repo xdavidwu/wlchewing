@@ -9,6 +9,7 @@
 static const struct option long_options[] = {
 	{"start-with-english",	no_argument,	NULL,	'e'},
 	{"dock",	required_argument,	NULL,	'd'},
+	{"font",	required_argument,	NULL,	'f'},
 	{0},
 };
 
@@ -21,7 +22,8 @@ static const char help[] = "Usage: %s [OPTIONS]...\n"
 	"\t\t\t\t  yield\tYield to existing dock surface\n"
 	"\t\t\t\t\tMay be put on top of normal surfaces\n"
 	"\t\t\t\t  no\tDo not either dock or yield\n"
-	"\t\t\t\t\tMay be put on top of any sufaces\n";
+	"\t\t\t\t\tMay be put on top of any sufaces\n"
+	"  -f, --font=FONT\t\tPango font description to use\n";
 
 struct wlchewing_config *config_new() {
 	struct wlchewing_config *config = calloc(1,
@@ -34,7 +36,7 @@ struct wlchewing_config *config_new() {
 
 int config_read_opts(int argc, char *argv[], struct wlchewing_config *config) {
 	int opt;
-	while ((opt = getopt_long(argc, argv, "ed:", long_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "ed:f:", long_options, NULL)) != -1) {
 		if (opt == '?') {
 			fprintf(stderr, help, argv[0]);
 			return -EINVAL;
@@ -54,6 +56,9 @@ int config_read_opts(int argc, char *argv[], struct wlchewing_config *config) {
 				fprintf(stderr, help, argv[0]);
 				return -EINVAL;
 			}
+			break;
+		case 'f':
+			config->font = optarg;
 			break;
 		}
 	}

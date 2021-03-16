@@ -12,6 +12,7 @@ enum dock_option {
 struct wlchewing_config {
 	bool start_eng;
 	enum dock_option dock;
+	const char *font;
 };
 
 struct wlchewing_config *config_new();
