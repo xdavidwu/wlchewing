@@ -33,7 +33,7 @@ static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
 static void surface_enter(void *data, struct wl_surface *wl_surface,
 		struct wl_output *output) {
 	struct wlchewing_bottom_panel *panel = data;
-	panel->scale = *((uint32_t *)wl_output_get_user_data(output));
+	panel->scale = *((int32_t *)wl_output_get_user_data(output));
 	printf("scale %d\n", panel->scale);
 }
 
@@ -79,21 +79,29 @@ static void bottom_panel_configure(struct wlchewing_bottom_panel *panel,
 	buffer_destroy(buffer);
 }
 
-static int render_cand(struct wlchewing_buffer *buffer, PangoLayout *layout,
-	       	const char *text, bool selected) {
-	pango_layout_set_text(layout, text, -1);
+static int render_cand(struct wlchewing_bottom_panel *panel,
+		struct wlchewing_buffer *buffer, const char *text, bool selected) {
+	pango_layout_set_text(panel->layout, text, -1);
 	int width, height;
-	pango_layout_get_size(layout, &width, &height);
+	pango_layout_get_size(panel->layout, &width, &height);
 	width /= PANGO_SCALE;
 	if (selected) {
-		cairo_set_source_rgba(buffer->cairo, 0.2, 0.2, 0.2, 0.9);
+		cairo_set_source_rgba(buffer->cairo,
+			panel->config->selection_color[0],
+			panel->config->selection_color[1],
+			panel->config->selection_color[2],
+			panel->config->selection_color[3]);
 		cairo_rectangle(buffer->cairo, 0, 0, width + 8, buffer->height);
 		cairo_fill(buffer->cairo);
 
 	}
 	cairo_move_to(buffer->cairo, 4, 0);
-	cairo_set_source_rgba(buffer->cairo, 1, 1, 1, 0.9);
-	pango_cairo_show_layout(buffer->cairo, layout);
+	cairo_set_source_rgba(buffer->cairo,
+		panel->config->text_color[0],
+		panel->config->text_color[1],
+		panel->config->text_color[2],
+		panel->config->text_color[3]);
+	pango_cairo_show_layout(buffer->cairo, panel->layout);
 	return width + 8;
 }
 
@@ -105,6 +113,7 @@ struct wlchewing_bottom_panel *bottom_panel_new(
 		wlchewing_err("Failed to calloc for bottom panel");
 		return NULL;
 	}
+	panel->config = state->config;
 	panel->scale = 1;
 	panel->height = 1;
 	panel->width = 1;
@@ -151,20 +160,23 @@ void bottom_panel_render(struct wlchewing_bottom_panel *panel,
 		panel->buffer_pool);
 	cairo_t *cairo = buffer->cairo;
 	cairo_save(cairo);
-	cairo_set_source_rgba(cairo, 0, 0, 0, 0.9);
+	cairo_set_source_rgba(cairo, panel->config->background_color[0],
+		panel->config->background_color[1],
+		panel->config->background_color[2],
+		panel->config->background_color[3]);
 	cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
 	cairo_paint(cairo);
 	cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
 	printf("selected %d\n", panel->selected_index);
 
 	int offset = 0, total_offset = 0;
-	offset = render_cand(buffer, panel->layout,
+	offset = render_cand(panel, buffer,
 		chewing_cand_string_by_index_static(ctx,
 		panel->selected_index), true);
 	for (int i = panel->selected_index + 1; i < total; i++) {
 		cairo_translate(cairo, offset, 0);
 		total_offset += offset;
-		offset = render_cand(buffer, panel->layout,
+		offset = render_cand(panel, buffer,
 			chewing_cand_string_by_index_static(ctx, i), false);
 	}
 	cairo_translate(cairo, -total_offset, 0);

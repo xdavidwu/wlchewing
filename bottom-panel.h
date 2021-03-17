@@ -8,9 +8,12 @@ struct wlchewing_state;
 struct wlchewing_buffer;
 
 struct wlchewing_bottom_panel {
+	struct wlchewing_config *config;
+
 	struct zwlr_layer_surface_v1 *layer_surface;
 	struct wl_surface *wl_surface;
 	struct wl_list *buffer_pool;
+
 	uint32_t width, height;
 	int32_t scale;
 	PangoLayout *layout;
