@@ -7,13 +7,14 @@
 #include <string.h>
 
 static const struct option long_options[] = {
-	{"start-with-english",	no_argument,	NULL,	'e'},
-	{"dock",	required_argument,	NULL,	'd'},
-	{"font",	required_argument,	NULL,	'f'},
-	{"top",			no_argument,	NULL,	't'},
-	{"text-color",	required_argument,	NULL,	'T'},
-	{"background-color",required_argument,	NULL,	'b'},
-	{"selection-color",required_argument,	NULL,	's'},
+	{"start-with-english",		no_argument,	NULL,	'e'},
+	{"dock",		required_argument,	NULL,	'd'},
+	{"font",		required_argument,	NULL,	'f'},
+	{"top",				no_argument,	NULL,	't'},
+	{"text-color",		required_argument,	NULL,	'T'},
+	{"background-color",	required_argument,	NULL,	'b'},
+	{"selection-color",	required_argument,	NULL,	's'},
+	{"selection-text-color",required_argument,	NULL,	'S'},
 	{0},
 };
 
@@ -32,6 +33,8 @@ static const char help[] = "Usage: %s [OPTIONS]...\n"
 	"  -T, --text-color=COLOR\tSet candidate panel text color\n"
 	"  -b, --background-color=COLOR\tSet candidate panel background color\n"
 	"  -s, --selection-color=COLOR\tSet candidate panel selection highlight color\n"
+	"  -S, --selection-text-color=COLOR\n"
+	"\t\t\t\tSet candidate panel selection text color\n"
 	"\n"
 	"COLOR is color specified as either #RRGGBB or #RRGGBBAA.\n";
 
@@ -45,6 +48,10 @@ struct wlchewing_config *config_new() {
 	config->text_color[1] = 1.0;
 	config->text_color[2] = 1.0;
 	config->text_color[3] = 1.0;
+	config->selection_text_color[0] = 1.0;
+	config->selection_text_color[1] = 1.0;
+	config->selection_text_color[2] = 1.0;
+	config->selection_text_color[3] = 1.0;
 	config->background_color[3] = 1.0;
 	config->selection_color[0] = 0.25;
 	config->selection_color[1] = 0.25;
@@ -73,7 +80,7 @@ static int decode_color(const char *str, double *rgba) {
 
 int config_read_opts(int argc, char *argv[], struct wlchewing_config *config) {
 	int opt;
-	while ((opt = getopt_long(argc, argv, "ed:f:tT:b:s:", long_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "ed:f:tT:b:s:S:", long_options, NULL)) != -1) {
 		if (opt == '?') {
 			fprintf(stderr, help, argv[0]);
 			return -EINVAL;
@@ -114,6 +121,12 @@ int config_read_opts(int argc, char *argv[], struct wlchewing_config *config) {
 			break;
 		case 's':
 			if (decode_color(optarg, config->selection_color) < 0) {
+				fprintf(stderr, help, argv[0]);
+				return -EINVAL;
+			}
+			break;
+		case 'S':
+			if (decode_color(optarg, config->selection_text_color) < 0) {
 				fprintf(stderr, help, argv[0]);
 				return -EINVAL;
 			}

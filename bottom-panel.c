@@ -85,6 +85,7 @@ static int render_cand(struct wlchewing_bottom_panel *panel,
 	int width, height;
 	pango_layout_get_size(panel->layout, &width, &height);
 	width /= PANGO_SCALE;
+
 	if (selected) {
 		cairo_set_source_rgba(buffer->cairo,
 			panel->config->selection_color[0],
@@ -95,12 +96,13 @@ static int render_cand(struct wlchewing_bottom_panel *panel,
 		cairo_fill(buffer->cairo);
 
 	}
+
+	const double *text_color = selected ?
+		panel->config->selection_text_color :
+		panel->config->text_color;
+	cairo_set_source_rgba(buffer->cairo, text_color[0], text_color[1],
+		text_color[2], text_color[3]);
 	cairo_move_to(buffer->cairo, 4, 0);
-	cairo_set_source_rgba(buffer->cairo,
-		panel->config->text_color[0],
-		panel->config->text_color[1],
-		panel->config->text_color[2],
-		panel->config->text_color[3]);
 	pango_cairo_show_layout(buffer->cairo, panel->layout);
 	return width + 8;
 }

@@ -17,6 +17,7 @@ struct wlchewing_config {
 	double text_color[4];
 	double background_color[4];
 	double selection_color[4];
+	double selection_text_color[4];
 };
 
 struct wlchewing_config *config_new();
