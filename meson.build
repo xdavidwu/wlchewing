@@ -1,4 +1,8 @@
-project('wlchewing',['c'])
+project('wlchewing',
+  'c',
+  license: 'MIT',
+  version: '0.1.0'
+)
 
 wl_client = dependency('wayland-client')
 wl_protocols = dependency('wayland-protocols')
