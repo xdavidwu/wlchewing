@@ -15,6 +15,7 @@ static const struct option long_options[] = {
 	{"background-color",	required_argument,	NULL,	'b'},
 	{"selection-color",	required_argument,	NULL,	's'},
 	{"selection-text-color",required_argument,	NULL,	'S'},
+	{"force-default-keymap",	no_argument,	NULL,	1},
 	{0},
 };
 
@@ -29,6 +30,8 @@ static const char help[] = "Usage: %s [OPTIONS]...\n"
 	"\t\t\t\t  no\tDo not either dock or yield\n"
 	"\t\t\t\t\tMay be put on top of any sufaces\n"
 	"  -f, --font=FONT\t\tPango font description to use\n"
+	"      --force-default-keymap\tForce to use xkbcommon default keymap to\n"
+	"\t\t\t\ttranslate keycodes for libchewing\n"
 	"  -t, --top\t\t\tAnchor candidate panel to top instead of bottom\n"
 	"  -T, --text-color=COLOR\tSet candidate panel text color\n"
 	"  -b, --background-color=COLOR\tSet candidate panel background color\n"
@@ -130,6 +133,9 @@ int config_read_opts(int argc, char *argv[], struct wlchewing_config *config) {
 				fprintf(stderr, help, argv[0]);
 				return -EINVAL;
 			}
+			break;
+		case 1:
+			config->chewing_use_xkb_default = true;
 			break;
 		}
 	}
