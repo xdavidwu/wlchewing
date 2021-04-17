@@ -355,14 +355,17 @@ static void handle_keymap(void *data, struct zwp_input_method_keyboard_grab_v2
 	char *keymap_string = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
 	if (state->xkb_keymap_string == NULL ||
 			strcmp(state->xkb_keymap_string, keymap_string) != 0) {
-		struct xkb_keymap *keymap = xkb_keymap_new_from_string(
-			state->xkb_context, keymap_string,
-			XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
-		xkb_state_unref(state->xkb_state);
-		state->xkb_state = xkb_state_new(keymap);
+		if (!state->config->chewing_use_xkb_default) {
+			struct xkb_keymap *keymap = xkb_keymap_new_from_string(
+				state->xkb_context, keymap_string,
+				XKB_KEYMAP_FORMAT_TEXT_V1,
+				XKB_KEYMAP_COMPILE_NO_FLAGS);
+			xkb_state_unref(state->xkb_state);
+			state->xkb_state = xkb_state_new(keymap);
+			xkb_keymap_unref(keymap);
+		}
 		free(state->xkb_keymap_string);
 		state->xkb_keymap_string = strdup(keymap_string);
-		xkb_keymap_unref(keymap);
 		// forward keymap
 		zwp_virtual_keyboard_v1_keymap(state->virtual_keyboard,
 			format, fd, size);
@@ -477,6 +480,10 @@ void im_setup(struct wlchewing_state *state) {
 
 	state->chewing = chewing_new();
 	state->xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+	struct xkb_keymap *keymap = xkb_keymap_new_from_names(
+		state->xkb_context, NULL, XKB_KEYMAP_COMPILE_NO_FLAGS);
+	state->xkb_state = xkb_state_new(keymap);
+	xkb_keymap_unref(keymap);
 	wl_list_init(&state->pending_handled_keysyms);
 	wl_list_init(&state->press_sent_keysyms);
 

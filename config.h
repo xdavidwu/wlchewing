@@ -18,6 +18,7 @@ struct wlchewing_config {
 	double background_color[4];
 	double selection_color[4];
 	double selection_text_color[4];
+	bool chewing_use_xkb_default;
 };
 
 struct wlchewing_config *config_new();
