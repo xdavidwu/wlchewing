@@ -17,6 +17,18 @@ static void noop() {
 
 static void vte_hack(struct wlchewing_state *state);
 
+static bool commit_bottom_panel(struct wlchewing_state *state, int offset) {
+	int index = state->bottom_panel->selected_index + offset;
+	if (index >= chewing_cand_TotalChoice(state->chewing)) {
+		return false;
+	}
+	chewing_cand_choose_by_index(state->chewing, index);
+	chewing_cand_close(state->chewing);
+	bottom_panel_destroy(state->bottom_panel);
+	state->bottom_panel = NULL;
+	return true;
+}
+
 int im_key_press(struct wlchewing_state *state, uint32_t key) {
 	xkb_keysym_t keysym = xkb_state_key_get_one_sym(state->xkb_state,
 		key + 8);
@@ -68,12 +80,19 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 		switch(keysym){
 		case XKB_KEY_Return:
 		case XKB_KEY_KP_Enter:
-			chewing_cand_choose_by_index(state->chewing,
-				state->bottom_panel->selected_index);
-			chewing_cand_close(state->chewing);
-			bottom_panel_destroy(state->bottom_panel);
-			state->bottom_panel = NULL;
-			need_update = true;
+			need_update = commit_bottom_panel(state, 0);
+			break;
+		case XKB_KEY_1 ... XKB_KEY_9:
+			need_update = commit_bottom_panel(state,
+					keysym - XKB_KEY_1);
+			break;
+		case XKB_KEY_KP_1 ... XKB_KEY_KP_9:
+			need_update = commit_bottom_panel(state,
+					keysym - XKB_KEY_KP_1);
+			break;
+		case XKB_KEY_0:
+		case XKB_KEY_KP_0:
+			need_update = commit_bottom_panel(state, 9);
 			break;
 		case XKB_KEY_Left:
 		case XKB_KEY_KP_Left:
