@@ -57,7 +57,8 @@ static void bottom_panel_configure(struct wlchewing_bottom_panel *panel,
 		pango_font_description_free(desc);
 	}
 
-	pango_layout_set_text(panel->layout, "哈嘍 PangoCairo", -1);
+	pango_layout_set_text(panel->layout, pango_language_get_sample_string(
+		pango_language_from_string("zh-tw")), -1);
 	int width, height;
 	pango_layout_get_size(panel->layout, &width, &height);
 	panel->height = height / PANGO_SCALE;
