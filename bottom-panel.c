@@ -44,7 +44,6 @@ static const struct wl_surface_listener surface_listener = {
 
 static void bottom_panel_configure(struct wlchewing_bottom_panel *panel,
 		struct wlchewing_state *state){
-	printf("render scale %d\n", panel->scale);
 	struct wlchewing_buffer *buffer = buffer_new(state->shm,
 		panel->width, panel->height, panel->scale);
 	assert(buffer);
@@ -59,9 +58,9 @@ static void bottom_panel_configure(struct wlchewing_bottom_panel *panel,
 
 	pango_layout_set_text(panel->layout, pango_language_get_sample_string(
 		pango_language_from_string("zh-tw")), -1);
-	int width, height;
-	pango_layout_get_size(panel->layout, &width, &height);
-	panel->height = height / PANGO_SCALE;
+	int height;
+	pango_layout_get_pixel_size(panel->layout, NULL, &height);
+	panel->height = height;
 
 	wl_surface_attach(panel->wl_surface, buffer->wl_buffer, 0, 0);
 	zwlr_layer_surface_v1_set_size(panel->layer_surface, 0, panel->height);
@@ -83,9 +82,8 @@ static void bottom_panel_configure(struct wlchewing_bottom_panel *panel,
 static int render_cand(struct wlchewing_bottom_panel *panel,
 		struct wlchewing_buffer *buffer, const char *text, bool selected) {
 	pango_layout_set_text(panel->layout, text, -1);
-	int width, height;
-	pango_layout_get_size(panel->layout, &width, &height);
-	width /= PANGO_SCALE;
+	int width;
+	pango_layout_get_pixel_size(panel->layout, &width, NULL);
 
 	if (selected) {
 		cairo_set_source_rgba(buffer->cairo,
@@ -95,7 +93,6 @@ static int render_cand(struct wlchewing_bottom_panel *panel,
 			panel->config->selection_color[3]);
 		cairo_rectangle(buffer->cairo, 0, 0, width + 8, buffer->height);
 		cairo_fill(buffer->cairo);
-
 	}
 
 	const double *text_color = selected ?
@@ -112,10 +109,7 @@ struct wlchewing_bottom_panel *bottom_panel_new(
 		struct wlchewing_state *state) {
 	struct wlchewing_bottom_panel *panel = calloc(1,
 		sizeof(struct wlchewing_bottom_panel));
-	if (panel == NULL) {
-		wlchewing_err("Failed to calloc for bottom panel");
-		return NULL;
-	}
+	assert(panel);
 	panel->config = state->config;
 	panel->scale = 1;
 	panel->height = 1;
@@ -139,7 +133,7 @@ struct wlchewing_bottom_panel *bottom_panel_new(
 	wl_surface_commit(panel->wl_surface);
 	wl_display_roundtrip(state->display);
 
-	// set font, scale and height
+	// set font, get width, height and scale
 	bottom_panel_configure(panel, state);
 
 	panel->buffer_pool = buffer_pool_new(state->shm,
@@ -170,7 +164,6 @@ void bottom_panel_render(struct wlchewing_bottom_panel *panel,
 	cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
 	cairo_paint(cairo);
 	cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
-	printf("selected %d\n", panel->selected_index);
 
 	int offset = 0, total_offset = 0;
 	offset = render_cand(panel, buffer,
@@ -182,7 +175,6 @@ void bottom_panel_render(struct wlchewing_bottom_panel *panel,
 		offset = render_cand(panel, buffer,
 			chewing_cand_string_by_index_static(ctx, i), false);
 	}
-	cairo_translate(cairo, -total_offset, 0);
 	cairo_restore(cairo);
 	wl_surface_attach(panel->wl_surface, buffer->wl_buffer, 0, 0);
 	wl_surface_damage_buffer(panel->wl_surface, 0, 0,
