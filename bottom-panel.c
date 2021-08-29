@@ -42,31 +42,15 @@ static const struct wl_surface_listener surface_listener = {
 	.leave = noop,
 };
 
-static void bottom_panel_configure(struct wlchewing_bottom_panel *panel,
-		struct wlchewing_state *state){
-	struct wlchewing_buffer *buffer = buffer_new(state->shm,
-		panel->width, panel->height, panel->scale);
-	assert(buffer);
-
-	panel->layout = pango_cairo_create_layout(buffer->cairo);
-	if (state->config->font) {
-		PangoFontDescription *desc =
-			pango_font_description_from_string(state->config->font);
-		pango_layout_set_font_description(panel->layout, desc);
-		pango_font_description_free(desc);
-	}
-
-	pango_layout_set_text(panel->layout, pango_language_get_sample_string(
-		pango_language_from_string("zh-tw")), -1);
-	int height;
-	pango_layout_get_pixel_size(panel->layout, NULL, &height);
-	panel->height = height;
-
-	wl_surface_attach(panel->wl_surface, buffer->wl_buffer, 0, 0);
+static void bottom_panel_configure(struct wlchewing_state *state,
+		struct wlchewing_bottom_panel *panel){
+	wl_surface_attach(panel->wl_surface,
+		state->bottom_panel_test_buffer->wl_buffer, 0, 0);
 	zwlr_layer_surface_v1_set_size(panel->layer_surface, 0, panel->height);
 
 	if (state->config->dock == DOCK_DOCK) {
-		zwlr_layer_surface_v1_set_exclusive_zone(panel->layer_surface, panel->height);
+		zwlr_layer_surface_v1_set_exclusive_zone(panel->layer_surface,
+			panel->height);
 	} else if (state->config->dock == DOCK_YEILD) {
 		zwlr_layer_surface_v1_set_exclusive_zone(panel->layer_surface, 0);
 	} else {
@@ -76,43 +60,64 @@ static void bottom_panel_configure(struct wlchewing_bottom_panel *panel,
 	wl_surface_commit(panel->wl_surface);
 	wl_display_roundtrip(state->display);
 	wl_surface_set_buffer_scale(panel->wl_surface, panel->scale);
-	buffer_destroy(buffer);
 }
 
-static int render_cand(struct wlchewing_bottom_panel *panel,
+static int render_cand(struct wlchewing_state *state,
 		struct wlchewing_buffer *buffer, const char *text, bool selected) {
-	pango_layout_set_text(panel->layout, text, -1);
+	pango_layout_set_text(state->bottom_panel_text_layout, text, -1);
 	int width;
-	pango_layout_get_pixel_size(panel->layout, &width, NULL);
+	pango_layout_get_pixel_size(state->bottom_panel_text_layout, &width, NULL);
 
 	if (selected) {
 		cairo_set_source_rgba(buffer->cairo,
-			panel->config->selection_color[0],
-			panel->config->selection_color[1],
-			panel->config->selection_color[2],
-			panel->config->selection_color[3]);
+			state->config->selection_color[0],
+			state->config->selection_color[1],
+			state->config->selection_color[2],
+			state->config->selection_color[3]);
 		cairo_rectangle(buffer->cairo, 0, 0, width + 8, buffer->height);
 		cairo_fill(buffer->cairo);
 	}
 
 	const double *text_color = selected ?
-		panel->config->selection_text_color :
-		panel->config->text_color;
+		state->config->selection_text_color :
+		state->config->text_color;
 	cairo_set_source_rgba(buffer->cairo, text_color[0], text_color[1],
 		text_color[2], text_color[3]);
 	cairo_move_to(buffer->cairo, 4, 0);
-	pango_cairo_show_layout(buffer->cairo, panel->layout);
+	pango_cairo_show_layout(buffer->cairo, state->bottom_panel_text_layout);
 	return width + 8;
 }
 
-struct wlchewing_bottom_panel *bottom_panel_new(
-		struct wlchewing_state *state) {
+int bottom_panel_init(struct wlchewing_state *state) {
+	state->bottom_panel_test_buffer = buffer_new(state->shm, 1, 1, 1);
+	assert(state->bottom_panel_test_buffer);
+
+	state->bottom_panel_text_layout = pango_cairo_create_layout(
+		state->bottom_panel_test_buffer->cairo);
+	assert(state->bottom_panel_text_layout);
+	if (state->config->font) {
+		PangoFontDescription *desc =
+			pango_font_description_from_string(state->config->font);
+		pango_layout_set_font_description(state->bottom_panel_text_layout, desc);
+		pango_font_description_free(desc);
+	}
+
+	pango_layout_set_text(state->bottom_panel_text_layout,
+		pango_language_get_sample_string(
+			pango_language_from_string("zh-tw")), -1);
+	int height;
+	pango_layout_get_pixel_size(state->bottom_panel_text_layout, NULL, &height);
+	state->bottom_panel_text_height = height;
+	return 0;
+}
+
+struct wlchewing_bottom_panel *bottom_panel_new(struct wlchewing_state *state) {
+	assert(state->bottom_panel_text_layout);
 	struct wlchewing_bottom_panel *panel = calloc(1,
 		sizeof(struct wlchewing_bottom_panel));
 	assert(panel);
-	panel->config = state->config;
 	panel->scale = 1;
-	panel->height = 1;
+	panel->height = state->bottom_panel_text_height;
 	panel->width = 1;
 	panel->wl_surface = wl_compositor_create_surface(state->compositor);
 	assert(panel->wl_surface);
@@ -133,8 +138,8 @@ struct wlchewing_bottom_panel *bottom_panel_new(
 	wl_surface_commit(panel->wl_surface);
 	wl_display_roundtrip(state->display);
 
-	// set font, get width, height and scale
-	bottom_panel_configure(panel, state);
+	// set height, get/set width and scale
+	bottom_panel_configure(state, panel);
 
 	panel->buffer_pool = buffer_pool_new(state->shm,
 		panel->width, panel->height, panel->scale);
@@ -144,40 +149,39 @@ struct wlchewing_bottom_panel *bottom_panel_new(
 void bottom_panel_destroy(struct wlchewing_bottom_panel *panel) {
 	zwlr_layer_surface_v1_destroy(panel->layer_surface);
 	buffer_pool_destroy(panel->buffer_pool);
-	g_object_unref(panel->layout);
 	free(panel);
 }
 
-void bottom_panel_render(struct wlchewing_bottom_panel *panel,
-		ChewingContext *ctx) {
-	int total = chewing_cand_TotalChoice(ctx);
-	assert(panel->selected_index < total);
+void bottom_panel_render(struct wlchewing_state *state) {
+	int total = chewing_cand_TotalChoice(state->chewing);
+	assert(state->bottom_panel->selected_index < total);
 
 	struct wlchewing_buffer *buffer = buffer_pool_get_buffer(
-		panel->buffer_pool);
+		state->bottom_panel->buffer_pool);
 	cairo_t *cairo = buffer->cairo;
 	cairo_save(cairo);
-	cairo_set_source_rgba(cairo, panel->config->background_color[0],
-		panel->config->background_color[1],
-		panel->config->background_color[2],
-		panel->config->background_color[3]);
+	cairo_set_source_rgba(cairo, state->config->background_color[0],
+		state->config->background_color[1],
+		state->config->background_color[2],
+		state->config->background_color[3]);
 	cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
 	cairo_paint(cairo);
 	cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
 
 	int offset = 0, total_offset = 0;
-	offset = render_cand(panel, buffer,
-		chewing_cand_string_by_index_static(ctx,
-		panel->selected_index), true);
-	for (int i = panel->selected_index + 1; i < total; i++) {
+	offset = render_cand(state, buffer,
+		chewing_cand_string_by_index_static(state->chewing,
+		state->bottom_panel->selected_index), true);
+	for (int i = state->bottom_panel->selected_index + 1; i < total; i++) {
 		cairo_translate(cairo, offset, 0);
 		total_offset += offset;
-		offset = render_cand(panel, buffer,
-			chewing_cand_string_by_index_static(ctx, i), false);
+		offset = render_cand(state, buffer,
+			chewing_cand_string_by_index_static(state->chewing, i),
+			false);
 	}
 	cairo_restore(cairo);
-	wl_surface_attach(panel->wl_surface, buffer->wl_buffer, 0, 0);
-	wl_surface_damage_buffer(panel->wl_surface, 0, 0,
+	wl_surface_attach(state->bottom_panel->wl_surface, buffer->wl_buffer, 0, 0);
+	wl_surface_damage_buffer(state->bottom_panel->wl_surface, 0, 0,
 		buffer->width * buffer->scale, buffer->height * buffer->scale);
-	wl_surface_commit(panel->wl_surface);
+	wl_surface_commit(state->bottom_panel->wl_surface);
 }

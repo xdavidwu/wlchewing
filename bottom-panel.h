@@ -8,23 +8,21 @@ struct wlchewing_state;
 struct wlchewing_buffer;
 
 struct wlchewing_bottom_panel {
-	struct wlchewing_config *config;
-
 	struct zwlr_layer_surface_v1 *layer_surface;
 	struct wl_surface *wl_surface;
 	struct wl_list *buffer_pool;
 
 	uint32_t width, height;
 	int32_t scale;
-	PangoLayout *layout;
 	int selected_index;
 };
+
+int bottom_panel_init(struct wlchewing_state *state);
 
 struct wlchewing_bottom_panel *bottom_panel_new(struct wlchewing_state *state);
 
 void bottom_panel_destroy(struct wlchewing_bottom_panel *panel);
 
-void bottom_panel_render(struct wlchewing_bottom_panel *panel,
-	ChewingContext *ctx);
+void bottom_panel_render(struct wlchewing_state *state);
 
 #endif

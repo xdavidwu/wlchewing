@@ -98,8 +98,7 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 		case XKB_KEY_KP_Left:
 			if (state->bottom_panel->selected_index > 0) {
 				state->bottom_panel->selected_index--;
-				bottom_panel_render(state->bottom_panel,
-					state->chewing);
+				bottom_panel_render(state);
 				wl_display_roundtrip(state->display);
 			}
 			break;
@@ -109,8 +108,7 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 					< chewing_cand_TotalChoice(
 						state->chewing) - 1) {
 				state->bottom_panel->selected_index++;
-				bottom_panel_render(state->bottom_panel,
-					state->chewing);
+				bottom_panel_render(state);
 				wl_display_roundtrip(state->display);
 			}
 			break;
@@ -128,8 +126,7 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 				chewing_cand_list_first(state->chewing);
 			}
 			state->bottom_panel->selected_index = 0;
-			bottom_panel_render(state->bottom_panel,
-				state->chewing);
+			bottom_panel_render(state);
 			wl_display_roundtrip(state->display);
 			break;
 		default:
@@ -175,8 +172,7 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 			chewing_cand_open(state->chewing);
 			if (chewing_cand_TotalChoice(state->chewing)) {
 				state->bottom_panel = bottom_panel_new(state);
-				bottom_panel_render(state->bottom_panel,
-					state->chewing);
+				bottom_panel_render(state);
 				wl_display_roundtrip(state->display);
 				return KEY_HANDLE_ARM_TIMER;
 			}
@@ -507,6 +503,8 @@ void im_setup(struct wlchewing_state *state) {
 	wl_list_init(&state->press_sent_keysyms);
 
 	wl_display_roundtrip(state->display);
+
+	bottom_panel_init(state);
 }
 
 void im_destory(struct wlchewing_state *state) {
