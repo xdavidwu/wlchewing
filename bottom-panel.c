@@ -148,6 +148,7 @@ struct wlchewing_bottom_panel *bottom_panel_new(struct wlchewing_state *state) {
 
 void bottom_panel_destroy(struct wlchewing_bottom_panel *panel) {
 	zwlr_layer_surface_v1_destroy(panel->layer_surface);
+	wl_surface_destroy(panel->wl_surface);
 	buffer_pool_destroy(panel->buffer_pool);
 	free(panel);
 }
