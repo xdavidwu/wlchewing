@@ -16,7 +16,7 @@ static const struct wl_buffer_listener buffer_listener = {
 	.release = handle_release,
 };
 
-static char *mktempname(char *template) {
+static void mktempname(char *template) {
 	struct timespec ts;
 	unsigned long r;
 
@@ -24,8 +24,6 @@ static char *mktempname(char *template) {
 	r = (ts.tv_nsec * 65537) ^ ((uintptr_t)&ts / 16 + (uintptr_t)template);
 	for (int i = 0; i < 6; i++, r >>= 5)
 		template[i] = 'A' + ( r & 15 ) + ( r & 16 ) * 2;
-
-	return template;
 }
 
 struct wlchewing_buffer *buffer_new(struct wl_shm *shm,
@@ -41,15 +39,15 @@ struct wlchewing_buffer *buffer_new(struct wl_shm *shm,
 	buffer->shm = shm;
 
 	char *template = strdup("/wlchewing-XXXXXX");
-	char *name = mktempname(template);
-	int fd = shm_open(name, O_RDWR | O_CREAT | O_EXCL, 0600);
+	mktempname(&template[11]);
+	int fd = shm_open(template, O_RDWR | O_CREAT | O_EXCL, 0600);
 	if (fd < 0) {
 		wlchewing_err("Failed to shm_open");
 		free(buffer);
 		return NULL;
 	}
-	shm_unlink(name);
-	free(name);
+	shm_unlink(template);
+	free(template);
 
 	off_t stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32,
 		width * scale);
