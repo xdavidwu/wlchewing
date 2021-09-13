@@ -136,25 +136,28 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	state->sni = calloc(1, sizeof(struct wlchewing_sni));
-	if (state->sni == NULL) {
-		wlchewing_err("Failed to calloc SNI state");
-		return EXIT_FAILURE;
-	}
-	int bus_fd = sni_setup(state->sni);
-	if (bus_fd < 0) {
-		wlchewing_err("Failed to setup dbus: %s", strerror(-bus_fd));
-		return EXIT_FAILURE;
-	}
-	struct epoll_event bus_epoll = {
-		.events = EPOLLIN,
-		.data = {
-			.fd = bus_fd,
-		},
-	};
-	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, bus_fd, &bus_epoll) < 0) {
-		wlchewing_err("Failed to add bus epoll: %s", strerror(errno));
-		return EXIT_FAILURE;
+	int bus_fd;
+	if (state->config->tray_icon) {
+		state->sni = calloc(1, sizeof(struct wlchewing_sni));
+		if (state->sni == NULL) {
+			wlchewing_err("Failed to calloc SNI state");
+			return EXIT_FAILURE;
+		}
+		bus_fd = sni_setup(state->sni);
+		if (bus_fd < 0) {
+			wlchewing_err("Failed to setup dbus: %s", strerror(-bus_fd));
+			return EXIT_FAILURE;
+		}
+		struct epoll_event bus_epoll = {
+			.events = EPOLLIN,
+			.data = {
+				.fd = bus_fd,
+			},
+		};
+		if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, bus_fd, &bus_epoll) < 0) {
+			wlchewing_err("Failed to add bus epoll: %s", strerror(errno));
+			return EXIT_FAILURE;
+		}
 	}
 
 	im_setup(state);
@@ -183,7 +186,7 @@ int main(int argc, char *argv[]) {
 			uint64_t count = 0;
 			read(state->timer_fd, &count, sizeof(uint64_t));
 			im_key_press(state, state->last_key);
-		} else if (event_caught.data.fd == bus_fd) {
+		} else if (state->config->tray_icon && event_caught.data.fd == bus_fd) {
 			sd_bus_process(state->sni->bus, NULL);
 		}
 	}

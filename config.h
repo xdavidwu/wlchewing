@@ -19,6 +19,7 @@ struct wlchewing_config {
 	double selection_color[4];
 	double selection_text_color[4];
 	bool chewing_use_xkb_default;
+	bool tray_icon;
 };
 
 struct wlchewing_config *config_new();

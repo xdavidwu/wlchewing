@@ -15,6 +15,7 @@ static const struct option long_options[] = {
 	{"background-color",	required_argument,	NULL,	'b'},
 	{"selection-color",	required_argument,	NULL,	's'},
 	{"selection-text-color",required_argument,	NULL,	'S'},
+	{"no-tray-icon",		no_argument,	NULL,	'n'},
 	{"force-default-keymap",	no_argument,	NULL,	1},
 	{0},
 };
@@ -38,6 +39,7 @@ static const char help[] = "Usage: %s [OPTIONS]...\n"
 	"  -s, --selection-color=COLOR\tSet candidate panel selection highlight color\n"
 	"  -S, --selection-text-color=COLOR\n"
 	"\t\t\t\tSet candidate panel selection text color\n"
+	"  -n, --no-tray-icon\t\tDisable tray icon.\n"
 	"\n"
 	"COLOR is color specified as either #RRGGBB or #RRGGBBAA.\n";
 
@@ -60,6 +62,7 @@ struct wlchewing_config *config_new() {
 	config->selection_color[1] = 0.25;
 	config->selection_color[2] = 0.25;
 	config->selection_color[3] = 1.0;
+	config->tray_icon = true;
 	return config;
 }
 
@@ -83,7 +86,7 @@ static int decode_color(const char *str, double *rgba) {
 
 int config_read_opts(int argc, char *argv[], struct wlchewing_config *config) {
 	int opt;
-	while ((opt = getopt_long(argc, argv, "ed:f:tT:b:s:S:", long_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "ed:f:tT:b:s:S:n", long_options, NULL)) != -1) {
 		if (opt == '?') {
 			fprintf(stderr, help, argv[0]);
 			return -EINVAL;
@@ -134,6 +137,8 @@ int config_read_opts(int argc, char *argv[], struct wlchewing_config *config) {
 				return -EINVAL;
 			}
 			break;
+		case 'n':
+			config->tray_icon = false;
 		case 1:
 			config->chewing_use_xkb_default = true;
 			break;
