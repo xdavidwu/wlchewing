@@ -20,28 +20,29 @@ static const struct option long_options[] = {
 	{0},
 };
 
-static const char help[] = "Usage: %s [OPTIONS]...\n"
-	"\n"
-	"  -e, --start-with-english\tStart with English mode\n"
-	"  -d, --dock=(dock|yield|no)\tSet candidate panel behavior, default to dock\n"
-	"\t\t\t\t  dock\tConfigure as a dock\n"
-	"\t\t\t\t\tDo not overlap with any surfaces\n"
-	"\t\t\t\t  yield\tYield to existing dock surface\n"
-	"\t\t\t\t\tMay be put on top of normal surfaces\n"
-	"\t\t\t\t  no\tDo not either dock or yield\n"
-	"\t\t\t\t\tMay be put on top of any sufaces\n"
-	"  -f, --font=FONT\t\tPango font description to use\n"
-	"      --force-default-keymap\tForce to use xkbcommon default keymap to\n"
-	"\t\t\t\ttranslate keycodes for libchewing\n"
-	"  -t, --top\t\t\tAnchor candidate panel to top instead of bottom\n"
-	"  -T, --text-color=COLOR\tSet candidate panel text color\n"
-	"  -b, --background-color=COLOR\tSet candidate panel background color\n"
-	"  -s, --selection-color=COLOR\tSet candidate panel selection highlight color\n"
-	"  -S, --selection-text-color=COLOR\n"
-	"\t\t\t\tSet candidate panel selection text color\n"
-	"  -n, --no-tray-icon\t\tDisable tray icon.\n"
-	"\n"
-	"COLOR is color specified as either #RRGGBB or #RRGGBBAA.\n";
+static const char help[] = "\
+Usage: %s [OPTIONS]...\n\
+\n\
+  -e, --start-with-english      Start with English mode\n\
+  -d, --dock=(dock|yield|no)    Set candidate panel behavior, default to dock\n\
+                                  dock  Configure as a dock\n\
+                                        Do not overlap with any surfaces\n\
+                                  yield Yield to existing dock surface\n\
+                                        May be put on top of normal surfaces\n\
+                                  no    Do not either dock or yield\n\
+                                        May be put on top of any sufaces\n\
+  -f, --font=FONT               Pango font description to use\n\
+      --force-default-keymap    Force to use xkbcommon default keymap to\n\
+                                translate keycodes for libchewing\n\
+  -t, --top                     Anchor candidate panel to top instead of bottom\n\
+  -T, --text-color=COLOR        Set candidate panel text color\n\
+  -b, --background-color=COLOR  Set candidate panel background color\n\
+  -s, --selection-color=COLOR   Set candidate panel selection highlight color\n\
+  -S, --selection-text-color=COLOR\n\
+                                Set candidate panel selection text color\n\
+  -n, --no-tray-icon            Disable tray icon.\n\
+\n\
+COLOR is color specified as either #RRGGBB or #RRGGBBAA.\n";
 
 struct wlchewing_config *config_new() {
 	struct wlchewing_config *config = calloc(1,
