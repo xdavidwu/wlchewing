@@ -367,7 +367,7 @@ static void handle_keymap(void *data, struct zwp_input_method_keyboard_grab_v2
 		*zwp_input_method_keyboard_grab_v2, uint32_t format,
 		int32_t fd, uint32_t size) {
 	struct wlchewing_state *state = data;
-	char *keymap_string = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+	char *keymap_string = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (state->xkb_keymap_string == NULL ||
 			strcmp(state->xkb_keymap_string, keymap_string) != 0) {
 		if (!state->config->chewing_use_xkb_default) {
