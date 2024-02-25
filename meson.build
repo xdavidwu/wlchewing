@@ -1,7 +1,7 @@
 project('wlchewing',
   'c',
   license: 'MIT',
-  version: '0.2',
+  version: '0.2.1',
 )
 
 wl_client = dependency('wayland-client')
