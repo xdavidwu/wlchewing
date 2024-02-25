@@ -15,6 +15,8 @@ static void noop() {
 	// no-op
 }
 
+static void vte_hack(struct wlchewing_state *state);
+
 static bool commit_bottom_panel(struct wlchewing_state *state, int offset) {
 	int index = state->bottom_panel->selected_index + offset;
 	if (index >= chewing_cand_TotalChoice(state->chewing)) {
@@ -48,6 +50,7 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 			zwp_input_method_v2_commit(state->input_method,
 				state->serial);
 			wl_display_roundtrip(state->display);
+			vte_hack(state);
 			return KEY_HANDLE_ARM_TIMER;
 		}
 		return KEY_HANDLE_FORWARD;
@@ -216,6 +219,7 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 	strncat(preedit, precommit, byte_cursor);
 	strcat(preedit, bopomofo);
 	strcat(preedit, &precommit[byte_cursor]);
+	bool need_hack = strlen(preedit) == 0;
 	zwp_input_method_v2_set_preedit_string(state->input_method, preedit,
 		byte_cursor, byte_cursor + strlen(bopomofo));
 	free(preedit);
@@ -225,6 +229,9 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 	}
 	zwp_input_method_v2_commit(state->input_method, state->serial);
 	wl_display_roundtrip(state->display);
+	if (need_hack) {
+		vte_hack(state);
+	}
 	return KEY_HANDLE_ARM_TIMER;
 }
 
@@ -297,6 +304,7 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 				zwp_input_method_v2_commit(state->input_method,
 					state->serial);
 				wl_display_roundtrip(state->display);
+				vte_hack(state);
 			} else {
 				// shift pressed and released without other keys,
 				// switch back to Chinese mode
@@ -508,4 +516,12 @@ void im_destory(struct wlchewing_state *state) {
 		bottom_panel_destroy(state->bottom_panel);
 		state->bottom_panel = NULL;
 	}
+}
+
+static void vte_hack(struct wlchewing_state *state) {
+	zwp_input_method_v2_destroy(state->input_method);
+	state->input_method = zwp_input_method_manager_v2_get_input_method(
+		state->input_method_manager, state->seat);
+	zwp_input_method_v2_add_listener(state->input_method, &im_listener, state);
+	wl_display_roundtrip(state->display);
 }
