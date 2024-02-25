@@ -522,6 +522,7 @@ static void vte_hack(struct wlchewing_state *state) {
 	zwp_input_method_v2_destroy(state->input_method);
 	state->input_method = zwp_input_method_manager_v2_get_input_method(
 		state->input_method_manager, state->seat);
+	state->serial = 0;
 	zwp_input_method_v2_add_listener(state->input_method, &im_listener, state);
 	wl_display_roundtrip(state->display);
 }
