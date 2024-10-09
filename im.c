@@ -69,10 +69,10 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 	 * we should not arm timer in later case or it may reset our
 	 * state used to check whether only shift is pressed.
 	 */
-	if (state->forwarding) {
-		return state->shift_only ? 0 : KEY_HANDLE_FORWARD;
-	} else if (state->shift_only) {
+	if (state->shift_only) {
 		return 0;
+	} else if (state->forwarding) {
+		return KEY_HANDLE_FORWARD;
 	}
 
 	if (state->bottom_panel) {
