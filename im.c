@@ -226,6 +226,7 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 	if (chewing_commit_Check(state->chewing)) {
 		zwp_input_method_v2_commit_string(state->input_method, 
 			chewing_commit_String_static(state->chewing));
+		chewing_ack(state->chewing);
 	}
 	zwp_input_method_v2_commit(state->input_method, state->serial);
 	wl_display_roundtrip(state->display);
