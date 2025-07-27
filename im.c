@@ -168,7 +168,6 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 			break;
 		case XKB_KEY_Down:
 		case XKB_KEY_KP_Down:
-			handled = false;
 			chewing_cand_open(state->chewing);
 			if (chewing_cand_TotalChoice(state->chewing)) {
 				state->bottom_panel = bottom_panel_new(state);
@@ -176,6 +175,7 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 				wl_display_roundtrip(state->display);
 				return KEY_HANDLE_ARM_TIMER;
 			}
+			handled = false;
 			break;
 		default:
 			// printable characters

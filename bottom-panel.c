@@ -62,6 +62,8 @@ static void bottom_panel_configure(struct wlchewing_state *state,
 	wl_surface_set_buffer_scale(panel->wl_surface, panel->scale);
 }
 
+static const int cand_padding = 4;
+
 static int render_cand(struct wlchewing_state *state,
 		struct wlchewing_buffer *buffer, const char *text, bool selected) {
 	pango_layout_set_text(state->bottom_panel_text_layout, text, -1);
@@ -74,7 +76,7 @@ static int render_cand(struct wlchewing_state *state,
 			state->config->selection_color[1],
 			state->config->selection_color[2],
 			state->config->selection_color[3]);
-		cairo_rectangle(buffer->cairo, 0, 0, width + 8, buffer->height);
+		cairo_rectangle(buffer->cairo, 0, 0, width + cand_padding * 2, buffer->height);
 		cairo_fill(buffer->cairo);
 	}
 
@@ -83,9 +85,9 @@ static int render_cand(struct wlchewing_state *state,
 		state->config->text_color;
 	cairo_set_source_rgba(buffer->cairo, text_color[0], text_color[1],
 		text_color[2], text_color[3]);
-	cairo_move_to(buffer->cairo, 4, 0);
+	cairo_move_to(buffer->cairo, cand_padding, 0);
 	pango_cairo_show_layout(buffer->cairo, state->bottom_panel_text_layout);
-	return width + 8;
+	return width + cand_padding * 2;
 }
 
 int bottom_panel_init(struct wlchewing_state *state) {
