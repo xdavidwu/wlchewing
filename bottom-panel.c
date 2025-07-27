@@ -39,7 +39,7 @@ static void surface_enter(void *data, struct wl_surface *wl_surface,
 
 static const struct wl_surface_listener surface_listener = {
 	.enter = surface_enter,
-	.leave = noop,
+	.leave = (void (*)(void *, struct wl_surface *, struct wl_output *))noop,
 };
 
 static void bottom_panel_configure(struct wlchewing_state *state,

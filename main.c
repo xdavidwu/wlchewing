@@ -51,7 +51,7 @@ static void noop() {
 
 static const struct wl_registry_listener registry_listener = {
 	.global = handle_global,
-	.global_remove = noop,
+	.global_remove = (void (*)(void *, struct wl_registry *, uint32_t))noop,
 };
 
 static void output_scale(void *data, struct wl_output *output, int32_t scale) {
@@ -63,9 +63,9 @@ static void output_scale(void *data, struct wl_output *output, int32_t scale) {
 
 static const struct wl_output_listener output_listener = {
 	.scale = output_scale,
-	.geometry = noop,
-	.mode = noop,
-	.done = noop
+	.geometry = (void (*)(void *, struct wl_output *, int32_t,  int32_t,  int32_t,  int32_t,  int32_t,  const char *, const char *, int32_t))noop,
+	.mode = (void (*)(void *, struct wl_output *, uint32_t,  int32_t,  int32_t,  int32_t))noop,
+	.done = (void (*)(void *, struct wl_output *))noop
 };
 
 int main(int argc, char *argv[]) {
