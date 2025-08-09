@@ -1,21 +1,22 @@
+#include "wlchewing.h"
 #include "xmem.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static inline void *assert_pointer(void *p, const char *op) {
+static inline void *assert_pointer(const char *f, int l, const char *op, void *p) {
 	if (p == NULL) {
-		perror(op);
+		_wlchewing_errloc("Fail to %s", f, l, op);
 		exit(EXIT_FAILURE);
 	}
 	return p;
 }
 
-void *xcalloc(size_t nmemb, size_t size) {
-	return assert_pointer(calloc(nmemb, size), "calloc");
+void *_xcalloc(const char *f, int l, size_t nmemb, size_t size) {
+	return assert_pointer(f, l, &__func__[2], calloc(nmemb, size));
 }
 
-char *xstrdup(const char *s) {
-	return assert_pointer(strdup(s), "strdup");
+char *_xstrdup(const char *f, int l, const char *s) {
+	return assert_pointer(f, l, &__func__[2], strdup(s));
 }
