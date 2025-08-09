@@ -284,10 +284,10 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 				state->forwarding = true;
 				sni_set_icon(state->sni, state->forwarding);
 				if (chewing_buffer_Check(state->chewing)) {
-					// FIXME this is hackish
-					chewing_handle_Enter(state->chewing);
+					chewing_commit_preedit_buf(state->chewing);
 					zwp_input_method_v2_commit_string(state->input_method,
 						chewing_commit_String_static(state->chewing));
+					chewing_ack(state->chewing);
 				}
 				zwp_input_method_v2_set_preedit_string(
 					state->input_method, "", 0, 0);
