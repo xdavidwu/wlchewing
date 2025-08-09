@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <signal.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <sys/epoll.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
@@ -94,6 +95,14 @@ static const struct wl_output_listener output_listener = {
 	.done		= (typeof(output_listener.done))noop
 };
 
+static inline int must_errno(int ret, const char *op) {
+	if (ret < 0) {
+		wlchewing_perr("Failed to %s", op);
+		exit(EXIT_FAILURE);
+	}
+	return ret;
+}
+
 int main(int argc, char *argv[]) {
 	struct wlchewing_state *state = &global_state;
 	state->config = config_new();
@@ -103,13 +112,12 @@ int main(int argc, char *argv[]) {
 
 	state->display = wl_display_connect(NULL);
 	if (state->display == NULL) {
-		wlchewing_err("Failed to create display");
+		wlchewing_err("Failed to connect to Wayland");
 		return EXIT_FAILURE;
 	}
 
 	struct wl_registry *registry = wl_display_get_registry(state->display);
 	wl_registry_add_listener(registry, &registry_listener, state);
-	wl_display_dispatch(state->display);
 	wl_display_roundtrip(state->display);
 
 	struct global_map_el *el = globals;
@@ -121,11 +129,7 @@ int main(int argc, char *argv[]) {
 		el++;
 	}
 
-	int epoll_fd = epoll_create1(EPOLL_CLOEXEC);
-	if (epoll_fd < 0) {
-		wlchewing_perr("Failed to create epoll");
-		return EXIT_FAILURE;
-	}
+	int epoll_fd = must_errno(epoll_create1(EPOLL_CLOEXEC), "setup epoll");
 
 	int display_fd = wl_display_get_fd(state->display);
 	struct epoll_event display_epoll = {
@@ -134,47 +138,40 @@ int main(int argc, char *argv[]) {
 			.fd = display_fd,
 		},
 	};
-	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, display_fd, &display_epoll)
-			== -1) {
-		wlchewing_perr("Failed to add display epoll");
-		return EXIT_FAILURE;
-	}
+	must_errno(
+		epoll_ctl(epoll_fd, EPOLL_CTL_ADD, display_fd, &display_epoll),
+		"watch Wayland event"
+	);
 
-	state->timer_fd = timerfd_create(CLOCK_MONOTONIC,
-		TFD_NONBLOCK | TFD_CLOEXEC);
-	if (state->timer_fd < 0) {
-		wlchewing_perr("Failed to create timer");
-		return EXIT_FAILURE;
-	}
+	state->timer_fd = must_errno(
+		timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC),
+		"create timer"
+	);
 	struct epoll_event timer_epoll = {
 		.events = EPOLLIN | EPOLLET,
 		.data = {
 			.fd = state->timer_fd,
 		},
 	};
-	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, state->timer_fd, &timer_epoll) < 0) {
-		wlchewing_perr("Failed to add timer epoll");
-		return EXIT_FAILURE;
-	}
+	must_errno(
+		epoll_ctl(epoll_fd, EPOLL_CTL_ADD, state->timer_fd, &timer_epoll),
+		"watch timer event"
+	);
 
 	int bus_fd;
 	if (state->config->tray_icon) {
 		state->sni = xcalloc(1, sizeof(struct wlchewing_sni));
-		bus_fd = sni_setup(state->sni);
-		if (bus_fd < 0) {
-			wlchewing_err("Failed to setup dbus: %s", strerror(-bus_fd));
-			return EXIT_FAILURE;
-		}
+		bus_fd = must_errno(sni_setup(state->sni), "setup dbus");
 		struct epoll_event bus_epoll = {
 			.events = EPOLLIN,
 			.data = {
 				.fd = bus_fd,
 			},
 		};
-		if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, bus_fd, &bus_epoll) < 0) {
-			wlchewing_perr("Failed to add bus epoll");
-			return EXIT_FAILURE;
-		}
+		must_errno(
+			epoll_ctl(epoll_fd, EPOLL_CTL_ADD, bus_fd, &bus_epoll),
+			"watch dbus event"
+		);
 	}
 
 	im_setup(state);
@@ -184,14 +181,8 @@ int main(int argc, char *argv[]) {
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = SA_RESETHAND;
 
-	if (sigaction(SIGTERM, &sa, NULL) < 0) {
-		wlchewing_perr("Failed to set SIGTERM handler");
-		return EXIT_FAILURE;
-	}
-	if (sigaction(SIGINT, &sa, NULL) < 0) {
-		wlchewing_perr("Failed to set SIGINT handler");
-		return EXIT_FAILURE;
-	}
+	must_errno(sigaction(SIGTERM, &sa, NULL), "set SIGTERM handler");
+	must_errno(sigaction(SIGINT, &sa, NULL), "set SIGINT handler");
 
 	struct epoll_event event_caught;
 	while (epoll_wait(epoll_fd, &event_caught, 1, -1)) {
