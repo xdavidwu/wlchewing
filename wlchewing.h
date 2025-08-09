@@ -34,16 +34,16 @@ struct wlchewing_wl_globals {
 };
 
 struct wlchewing_state {
-	struct wlchewing_wl_globals wl_globals;
-
 	struct wlchewing_config *config;
 
 	struct wl_display *display;
+	struct wlchewing_wl_globals wl_globals;
 
 	struct zwp_input_method_v2 *input_method;
 	struct zwp_input_method_keyboard_grab_v2 *kb_grab;
 	bool pending_activate;
 	bool activated;
+	int32_t serial;
 
 	struct zwp_virtual_keyboard_v1 *virtual_keyboard;
 
@@ -56,20 +56,18 @@ struct wlchewing_state {
 
 	ChewingContext *chewing;
 	bool forwarding;
-	bool shift_only;
 
 	struct xkb_context *xkb_context;
 	struct xkb_state *xkb_state;
 	char *xkb_keymap_string;
-	uint32_t last_key;
 	int32_t kb_delay, kb_rate;
-	int timer_fd;
 
+	uint32_t last_key;
+	int timer_fd;
+	bool shift_only;
 	struct wl_list pending_handled_keysyms; // wlchewing_keysym
 	struct wl_list press_sent_keysyms; // wlchewing_keysym
 	int32_t millis_offset;
-
-	int32_t serial;
 };
 
 void im_setup(struct wlchewing_state *state);
