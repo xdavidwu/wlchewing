@@ -103,6 +103,13 @@ static inline int must_errno(int ret, const char *op) {
 	return ret;
 }
 
+static inline int errnoify(int ret) {
+	if (ret < 0) {
+		errno = -ret;
+	}
+	return ret;
+}
+
 int main(int argc, char *argv[]) {
 	struct wlchewing_state *state = &global_state;
 	state->config = config_new();
@@ -187,15 +194,22 @@ int main(int argc, char *argv[]) {
 	struct epoll_event event_caught;
 	while (epoll_wait(epoll_fd, &event_caught, 1, -1)) {
 		if (event_caught.data.fd == display_fd) {
-			if (wl_display_dispatch(state->display) == -1) {
-				break;
-			}
+			must_errno(
+				wl_display_dispatch(state->display),
+				"process Wayland events"
+			);
 		} else if (event_caught.data.fd == state->timer_fd) {
 			uint64_t count = 0;
-			read(state->timer_fd, &count, sizeof(uint64_t));
+			must_errno(
+				read(state->timer_fd, &count, sizeof(uint64_t)),
+				"read from timer"
+			);
 			im_key_press(state, state->last_key);
 		} else if (state->config->tray_icon && event_caught.data.fd == bus_fd) {
-			sd_bus_process(state->sni->bus, NULL);
+			must_errno(
+				errnoify(sd_bus_process(state->sni->bus, NULL)),
+				"process dbus message"
+			);
 		}
 	}
 	return EXIT_SUCCESS;
