@@ -17,31 +17,31 @@ struct wlchewing_state global_state = {0};
 struct global_map_el {
 	const struct wl_interface *interface;
 	uint32_t version;
-	size_t offset;
+	void **dest;
 } globals[] = {
 	{
 		&wl_compositor_interface, 4,
-		offsetof(struct wlchewing_wl_globals, compositor),
+		(void **)&global_state.wl_globals.compositor,
 	},
 	{
 		&wl_shm_interface, 1,
-		offsetof(struct wlchewing_wl_globals, shm),
+		(void **)&global_state.wl_globals.shm,
 	},
 	{
 		&wl_seat_interface, 0, // not used directly yet, request the latest one
-		offsetof(struct wlchewing_wl_globals, seat),
+		(void **)&global_state.wl_globals.seat,
 	},
 	{
 		&zwp_input_method_manager_v2_interface, 1,
-		offsetof(struct wlchewing_wl_globals, input_method_manager),
+		(void **)&global_state.wl_globals.input_method_manager,
 	},
 	{
 		&zwp_virtual_keyboard_manager_v1_interface, 1,
-		offsetof(struct wlchewing_wl_globals, virtual_keyboard_manager),
+		(void **)&global_state.wl_globals.virtual_keyboard_manager,
 	},
 	{
 		&zwlr_layer_shell_v1_interface, 1,
-		offsetof(struct wlchewing_wl_globals, layer_shell),
+		(void **)&global_state.wl_globals.layer_shell,
 	},
 	{NULL},
 };
@@ -56,12 +56,10 @@ static const struct wl_output_listener output_listener;
 
 static void handle_global(void *data, struct wl_registry *registry,
 		uint32_t name, const char *interface, uint32_t version) {
-	struct wlchewing_state *state = data;
 	struct global_map_el *el = globals;
 	while (el->interface != NULL) {
 		if (strcmp(interface, el->interface->name) == 0) {
-			void **p = (void **)(((char *)&state->wl_globals) + el->offset);
-			*p = wl_registry_bind(
+			*el->dest = wl_registry_bind(
 				registry, name, el->interface,
 				el->version ? el->version : version);
 			return;
@@ -117,8 +115,7 @@ int main(int argc, char *argv[]) {
 
 	struct global_map_el *el = globals;
 	while (el->interface != NULL) {
-		void **p = (void **)(((char *)&state->wl_globals) + el->offset);
-		if (*p == NULL) {
+		if (*el->dest == NULL) {
 			wlchewing_err("Required Wayland interface not available: %s, version %d", el->interface->name, el->version);
 			return EXIT_FAILURE;
 		}
