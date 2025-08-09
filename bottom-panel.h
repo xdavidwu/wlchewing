@@ -2,6 +2,7 @@
 #define BOTTOM_PANEL_H
 
 #include <pango/pangocairo.h>
+
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 struct wlchewing_state;

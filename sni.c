@@ -1,7 +1,8 @@
-#include "xmem.h"
-#include "wlchewing.h"
-#include "sni.h"
 #include <unistd.h>
+
+#include "sni.h"
+#include "wlchewing.h"
+#include "xmem.h"
 
 static const sd_bus_vtable service_vtable[] = {
 	SD_BUS_VTABLE_START(0),

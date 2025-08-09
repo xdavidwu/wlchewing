@@ -2,6 +2,7 @@
 #define BUFFER_H
 
 #include <cairo.h>
+#include <sys/types.h>
 #include <wayland-client.h>
 
 struct wlchewing_buffer {

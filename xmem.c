@@ -1,9 +1,9 @@
-#include "wlchewing.h"
-#include "xmem.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "wlchewing.h"
+#include "xmem.h"
 
 static inline void *assert_pointer(const char *f, int l, const char *op, void *p) {
 	if (p == NULL) {

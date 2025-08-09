@@ -1,10 +1,10 @@
 #include <assert.h>
 #include <stdbool.h>
 
-#include "xmem.h"
-#include "wlchewing.h"
-#include "buffer.h"
 #include "bottom-panel.h"
+#include "buffer.h"
+#include "wlchewing.h"
+#include "xmem.h"
 
 static void noop() {
 	// no-op
@@ -26,8 +26,8 @@ static void layer_surface_closed(void *data,
 }
 
 static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
-	.configure = layer_surface_configure,
-	.closed = layer_surface_closed,
+	.configure	= layer_surface_configure,
+	.closed		= layer_surface_closed,
 };
 
 static void surface_enter(void *data, struct wl_surface *wl_surface,
@@ -37,8 +37,8 @@ static void surface_enter(void *data, struct wl_surface *wl_surface,
 }
 
 static const struct wl_surface_listener surface_listener = {
-	.enter = surface_enter,
-	.leave = (typeof(surface_listener.leave))noop,
+	.enter	= surface_enter,
+	.leave	= (typeof(surface_listener.leave))noop,
 };
 
 static void bottom_panel_configure(struct wlchewing_state *state,

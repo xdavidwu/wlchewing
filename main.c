@@ -1,15 +1,15 @@
 #include <assert.h>
-#include <stdint.h>
-#include <unistd.h>
 #include <signal.h>
+#include <stdint.h>
 #include <sys/epoll.h>
 #include <sys/timerfd.h>
+#include <unistd.h>
 #include <wayland-client-protocol.h>
 
-#include "xmem.h"
-#include "wlchewing.h"
 #include "bottom-panel.h"
 #include "sni.h"
+#include "wlchewing.h"
+#include "xmem.h"
 
 struct wlchewing_state global_state = {0};
 
@@ -88,10 +88,10 @@ static void output_scale(void *data, struct wl_output *output, int32_t scale) {
 }
 
 static const struct wl_output_listener output_listener = {
-	.scale = output_scale,
-	.geometry = (typeof(output_listener.geometry))noop,
-	.mode = (typeof(output_listener.mode))noop,
-	.done = (typeof(output_listener.done))noop
+	.scale		= output_scale,
+	.geometry	= (typeof(output_listener.geometry))noop,
+	.mode		= (typeof(output_listener.mode))noop,
+	.done		= (typeof(output_listener.done))noop
 };
 
 int main(int argc, char *argv[]) {

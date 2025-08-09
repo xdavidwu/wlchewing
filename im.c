@@ -1,10 +1,9 @@
-#include <errno.h>
 #include <sys/mman.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
 
-#include "xmem.h"
 #include "wlchewing.h"
+#include "xmem.h"
 
 static int32_t get_millis() {
 	struct timespec spec;
@@ -457,13 +456,13 @@ static void handle_done(void *data,
 }
 
 static const struct zwp_input_method_v2_listener im_listener = {
-	.activate = handle_activate,
-	.deactivate = handle_deactivate,
-	.surrounding_text = (typeof(im_listener.surrounding_text))noop,
-	.text_change_cause = (typeof(im_listener.text_change_cause))noop,
-	.content_type = (typeof(im_listener.content_type))noop,
-	.done = handle_done,
-	.unavailable = handle_unavailable,
+	.activate		= handle_activate,
+	.deactivate		= handle_deactivate,
+	.surrounding_text	= (typeof(im_listener.surrounding_text))noop,
+	.text_change_cause	= (typeof(im_listener.text_change_cause))noop,
+	.content_type		= (typeof(im_listener.content_type))noop,
+	.done			= handle_done,
+	.unavailable		= handle_unavailable,
 };
 
 void im_release_all_keys(struct wlchewing_state *state) {

@@ -1,22 +1,22 @@
-#include "xmem.h"
-#include "config.h"
-
 #include <errno.h>
 #include <getopt.h>
 #include <stdio.h>
 #include <string.h>
 
+#include "config.h"
+#include "xmem.h"
+
 static const struct option long_options[] = {
-	{"start-with-english",		no_argument,	NULL,	'e'},
+	{"start-with-english",	no_argument,		NULL,	'e'},
 	{"dock",		required_argument,	NULL,	'd'},
 	{"font",		required_argument,	NULL,	'f'},
-	{"top",				no_argument,	NULL,	't'},
+	{"top",			no_argument,		NULL,	't'},
 	{"text-color",		required_argument,	NULL,	'T'},
 	{"background-color",	required_argument,	NULL,	'b'},
 	{"selection-color",	required_argument,	NULL,	's'},
 	{"selection-text-color",required_argument,	NULL,	'S'},
-	{"no-tray-icon",		no_argument,	NULL,	'n'},
-	{"force-default-keymap",	no_argument,	NULL,	1},
+	{"no-tray-icon",	no_argument,		NULL,	'n'},
+	{"force-default-keymap",no_argument,		NULL,	1},
 	{0},
 };
 

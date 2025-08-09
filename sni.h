@@ -1,9 +1,9 @@
 #ifndef SNI_H
 #define SNI_H
 
-#include <systemd/sd-bus.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <systemd/sd-bus.h>
 
 struct wlchewing_sni {
 	sd_bus *bus;

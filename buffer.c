@@ -1,12 +1,12 @@
-#include "xmem.h"
-#include "wlchewing.h"
-#include "buffer.h"
-
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#include "buffer.h"
+#include "wlchewing.h"
+#include "xmem.h"
 
 static void handle_release(void *data, struct wl_buffer *wl_buffer) {
 	struct wlchewing_buffer *buffer = data;
@@ -14,7 +14,7 @@ static void handle_release(void *data, struct wl_buffer *wl_buffer) {
 }
 
 static const struct wl_buffer_listener buffer_listener = {
-	.release = handle_release,
+	.release	= handle_release,
 };
 
 static void mktempname(char *template) {
