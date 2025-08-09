@@ -382,7 +382,7 @@ static void handle_keymap(void *data, struct zwp_input_method_keyboard_grab_v2
 			xkb_keymap_unref(keymap);
 		}
 		free(state->xkb_keymap_string);
-		state->xkb_keymap_string = strdup(keymap_string);
+		state->xkb_keymap_string = xstrdup(keymap_string);
 		// forward keymap
 		zwp_virtual_keyboard_v1_keymap(state->virtual_keyboard,
 			format, fd, size);

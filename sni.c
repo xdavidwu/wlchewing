@@ -1,3 +1,4 @@
+#include "xmem.h"
 #include "wlchewing.h"
 #include "sni.h"
 #include <unistd.h>
@@ -80,7 +81,7 @@ int sni_setup(struct wlchewing_sni *sni) {
 		return res;
 	}
 	sprintf(buf, "org.freedesktop.StatusNotifierItem-%ld-%d", (long)getpid(), 1);
-	sni->service_name = strdup(buf);
+	sni->service_name = xstrdup(buf);
 	res = sd_bus_add_object_vtable(sni->bus, &sni->slot, "/StatusNotifierItem",
 			"org.freedesktop.StatusNotifierItem", service_vtable, sni);
 	if (res < 0) {

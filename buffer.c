@@ -35,7 +35,7 @@ struct wlchewing_buffer *buffer_new(struct wl_shm *shm,
 	buffer->scale = scale;
 	buffer->shm = shm;
 
-	char *template = strdup("/wlchewing-XXXXXX");
+	char *template = xstrdup("/wlchewing-XXXXXX");
 	mktempname(&template[11]);
 	int fd = shm_open(template, O_RDWR | O_CREAT | O_EXCL, 0600);
 	if (fd < 0) {
