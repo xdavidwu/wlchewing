@@ -118,7 +118,6 @@ struct wlchewing_buffer *buffer_pool_get_buffer(struct wl_list *pool) {
 		}
 		last_buffer = cur_buffer;
 	}
-	printf("new buffer\n");
 	struct wlchewing_buffer *new_buffer = buffer_new(last_buffer->shm,
 		last_buffer->width, last_buffer->height, last_buffer->scale);
 	wl_list_insert(&last_buffer->link, &new_buffer->link);

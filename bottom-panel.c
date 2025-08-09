@@ -12,7 +12,6 @@ static void noop() {
 static void layer_surface_configure(void *data,
 		struct zwlr_layer_surface_v1 *wlr_layer_surface,
 		uint32_t serial, uint32_t w, uint32_t h) {
-	printf("resize %d %d\n", w, h);
 	struct wlchewing_bottom_panel *panel = data;
 	panel->width = w;
 	panel->height = h;
@@ -34,7 +33,6 @@ static void surface_enter(void *data, struct wl_surface *wl_surface,
 		struct wl_output *output) {
 	struct wlchewing_bottom_panel *panel = data;
 	panel->scale = *((int32_t *)wl_output_get_user_data(output));
-	printf("scale %d\n", panel->scale);
 }
 
 static const struct wl_surface_listener surface_listener = {
