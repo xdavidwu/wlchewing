@@ -172,16 +172,12 @@ void bottom_panel_render(struct wlchewing_state *state) {
 	cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
 
 	int offset = 0, total_offset = 0;
-	offset = render_cand(state, buffer,
-		chewing_cand_string_by_index_static(state->chewing,
-		state->bottom_panel->selected_index), true);
-		total_offset += offset;
-	for (int i = state->bottom_panel->selected_index + 1; i < total &&
+	for (int i = state->bottom_panel->selected_index; i < total &&
 			total_offset < state->bottom_panel->width; i++) {
 		cairo_translate(cairo, offset, 0);
 		offset = render_cand(state, buffer,
 			chewing_cand_string_by_index_static(state->chewing, i),
-			false);
+			i == state->bottom_panel->selected_index);
 		total_offset += offset;
 	}
 	cairo_restore(cairo);
