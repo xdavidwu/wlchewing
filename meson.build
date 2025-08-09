@@ -3,6 +3,14 @@ project('wlchewing',
   license: 'MIT',
   version: '0.2.2',
   meson_version: '>=1.8.0',
+  default_options: {
+    'c_std': 'c23',
+  },
+)
+
+add_project_arguments(
+  ['-D_POSIX_C_SOURCE=200809L'],
+  language: 'c',
 )
 
 wl_client = dependency('wayland-client')
