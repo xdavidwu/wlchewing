@@ -489,11 +489,11 @@ void im_setup(struct wlchewing_state *state) {
 	sni_set_icon(state->sni, state->forwarding);
 
 	state->input_method = zwp_input_method_manager_v2_get_input_method(
-		state->input_method_manager, state->seat);
+		state->wl_globals.input_method_manager, state->wl_globals.seat);
 	zwp_input_method_v2_add_listener(state->input_method, &im_listener, state);
 
 	state->virtual_keyboard = zwp_virtual_keyboard_manager_v1_create_virtual_keyboard(
-		state->virtual_keyboard_manager, state->seat);
+		state->wl_globals.virtual_keyboard_manager, state->wl_globals.seat);
 
 	state->chewing = chewing_new();
 	state->xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
@@ -523,7 +523,7 @@ void im_destory(struct wlchewing_state *state) {
 static void vte_hack(struct wlchewing_state *state) {
 	zwp_input_method_v2_destroy(state->input_method);
 	state->input_method = zwp_input_method_manager_v2_get_input_method(
-		state->input_method_manager, state->seat);
+		state->wl_globals.input_method_manager, state->wl_globals.seat);
 	state->serial = 0;
 	zwp_input_method_v2_add_listener(state->input_method, &im_listener, state);
 	wl_display_roundtrip(state->display);

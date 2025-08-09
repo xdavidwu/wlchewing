@@ -1,9 +1,11 @@
 #include <assert.h>
 #include <errno.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/epoll.h>
 #include <sys/timerfd.h>
+#include <wayland-client-protocol.h>
 
 #include "xmem.h"
 #include "wlchewing.h"
@@ -11,6 +13,38 @@
 #include "sni.h"
 
 struct wlchewing_state global_state = {0};
+
+struct global_map_el {
+	const struct wl_interface *interface;
+	uint32_t version;
+	size_t offset;
+} globals[] = {
+	{
+		&wl_compositor_interface, 4,
+		offsetof(struct wlchewing_wl_globals, compositor),
+	},
+	{
+		&wl_shm_interface, 1,
+		offsetof(struct wlchewing_wl_globals, shm),
+	},
+	{
+		&wl_seat_interface, 0, // not used directly yet, request the latest one
+		offsetof(struct wlchewing_wl_globals, seat),
+	},
+	{
+		&zwp_input_method_manager_v2_interface, 1,
+		offsetof(struct wlchewing_wl_globals, input_method_manager),
+	},
+	{
+		&zwp_virtual_keyboard_manager_v1_interface, 1,
+		offsetof(struct wlchewing_wl_globals, virtual_keyboard_manager),
+	},
+	{
+		&zwlr_layer_shell_v1_interface, 1,
+		offsetof(struct wlchewing_wl_globals, layer_shell),
+	},
+	{NULL},
+};
 
 static void handle_signal(int signo) {
 	im_release_all_keys(&global_state);
@@ -23,23 +57,18 @@ static const struct wl_output_listener output_listener;
 static void handle_global(void *data, struct wl_registry *registry,
 		uint32_t name, const char *interface, uint32_t version) {
 	struct wlchewing_state *state = data;
-	if (strcmp(interface, zwp_input_method_manager_v2_interface.name) == 0) {
-		state->input_method_manager = wl_registry_bind(registry, name,
-			&zwp_input_method_manager_v2_interface, 1);
-	} else if (strcmp(interface, zwp_virtual_keyboard_manager_v1_interface.name) == 0) {
-		state->virtual_keyboard_manager = wl_registry_bind(registry, name,
-			&zwp_virtual_keyboard_manager_v1_interface, 1);
-	} else if (strcmp(interface, wl_seat_interface.name) == 0) {
-		state->seat = wl_registry_bind(registry, name, &wl_seat_interface, version);
-	} else if (strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0) {
-		state->layer_shell = wl_registry_bind(registry, name,
-			&zwlr_layer_shell_v1_interface, 1);
-	} else if (strcmp(interface, wl_shm_interface.name) == 0) {
-		state->shm = wl_registry_bind(registry, name, &wl_shm_interface, 1);
-	} else if (strcmp(interface, wl_compositor_interface.name) == 0) {
-		state->compositor = wl_registry_bind(registry, name,
-			&wl_compositor_interface, 4);
-	} else if (strcmp(interface, wl_output_interface.name) == 0) {
+	struct global_map_el *el = globals;
+	while (el->interface != NULL) {
+		if (strcmp(interface, el->interface->name) == 0) {
+			void **p = (void **)(((char *)&state->wl_globals) + el->offset);
+			*p = wl_registry_bind(
+				registry, name, el->interface,
+				el->version ? el->version : version);
+			return;
+		}
+		el++;
+	}
+	if (strcmp(interface, wl_output_interface.name) == 0) {
 		struct wl_output *output = wl_registry_bind(registry, name,
 			&wl_output_interface, 3);
 		wl_output_add_listener(output, &output_listener, NULL);
@@ -86,12 +115,14 @@ int main(int argc, char *argv[]) {
 	wl_display_dispatch(state->display);
 	wl_display_roundtrip(state->display);
 
-	if (state->layer_shell == NULL || state->shm == NULL
-			|| state->compositor == NULL
-			|| state->input_method_manager == NULL
-			|| state->virtual_keyboard_manager == NULL) {
-		wlchewing_err("Required wayland interface not available");
-		return EXIT_FAILURE;
+	struct global_map_el *el = globals;
+	while (el->interface != NULL) {
+		void **p = (void **)(((char *)&state->wl_globals) + el->offset);
+		if (*p == NULL) {
+			wlchewing_err("Required Wayland interface not available: %s, version %d", el->interface->name, el->version);
+			return EXIT_FAILURE;
+		}
+		el++;
 	}
 
 	int epoll_fd = epoll_create1(EPOLL_CLOEXEC);

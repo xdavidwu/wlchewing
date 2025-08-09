@@ -3,9 +3,12 @@
 
 #include <chewing.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <wayland-client-protocol.h>
 #include <wayland-client.h>
+#include <wayland-util.h>
 #include <xkbcommon/xkbcommon.h>
 
 #include "bottom-panel.h"
@@ -20,24 +23,29 @@ struct wlchewing_keysym {
 	struct wl_list link;
 };
 
-struct wlchewing_state {
-	struct wlchewing_config *config;
-
-	struct wl_display *display;
+struct wlchewing_wl_globals {
 	struct wl_compositor *compositor;
 	struct wl_shm *shm;
 	struct wl_seat *seat;
-
 	struct zwp_input_method_manager_v2 *input_method_manager;
+	struct zwp_virtual_keyboard_manager_v1 *virtual_keyboard_manager;
+	struct zwlr_layer_shell_v1 *layer_shell;
+};
+
+struct wlchewing_state {
+	struct wlchewing_wl_globals wl_globals;
+
+	struct wlchewing_config *config;
+
+	struct wl_display *display;
+
 	struct zwp_input_method_v2 *input_method;
 	struct zwp_input_method_keyboard_grab_v2 *kb_grab;
 	bool pending_activate;
 	bool activated;
 
-	struct zwp_virtual_keyboard_manager_v1 *virtual_keyboard_manager;
 	struct zwp_virtual_keyboard_v1 *virtual_keyboard;
 
-	struct zwlr_layer_shell_v1 *layer_shell;
 	struct wlchewing_bottom_panel *bottom_panel;
 	PangoLayout *bottom_panel_text_layout;
 	uint32_t bottom_panel_text_height;

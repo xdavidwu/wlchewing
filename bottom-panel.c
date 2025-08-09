@@ -90,7 +90,7 @@ static int render_cand(struct wlchewing_state *state,
 }
 
 int bottom_panel_init(struct wlchewing_state *state) {
-	state->bottom_panel_test_buffer = buffer_new(state->shm, 1, 1, 1);
+	state->bottom_panel_test_buffer = buffer_new(state->wl_globals.shm, 1, 1, 1);
 	assert(state->bottom_panel_test_buffer);
 
 	state->bottom_panel_text_layout = pango_cairo_create_layout(
@@ -119,11 +119,11 @@ struct wlchewing_bottom_panel *bottom_panel_new(struct wlchewing_state *state) {
 	panel->scale = 1;
 	panel->height = state->bottom_panel_text_height;
 	panel->width = 1;
-	panel->wl_surface = wl_compositor_create_surface(state->compositor);
+	panel->wl_surface = wl_compositor_create_surface(state->wl_globals.compositor);
 	assert(panel->wl_surface);
 	wl_surface_add_listener(panel->wl_surface, &surface_listener, panel);
 	panel->layer_surface = zwlr_layer_shell_v1_get_layer_surface(
-		state->layer_shell, panel->wl_surface, NULL,
+		state->wl_globals.layer_shell, panel->wl_surface, NULL,
 		ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "input-method-panel");
 	assert(panel->layer_surface);
 
@@ -141,7 +141,7 @@ struct wlchewing_bottom_panel *bottom_panel_new(struct wlchewing_state *state) {
 	// set height, get/set width and scale
 	bottom_panel_configure(state, panel);
 
-	panel->buffer_pool = buffer_pool_new(state->shm,
+	panel->buffer_pool = buffer_pool_new(state->wl_globals.shm,
 		panel->width, panel->height, panel->scale);
 	return panel;
 }
