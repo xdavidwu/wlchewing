@@ -39,7 +39,7 @@ struct wlchewing_buffer *buffer_new(struct wl_shm *shm,
 	mktempname(&template[11]);
 	int fd = shm_open(template, O_RDWR | O_CREAT | O_EXCL, 0600);
 	if (fd < 0) {
-		wlchewing_err("Failed to shm_open");
+		wlchewing_perr("Failed to shm_open");
 		free(buffer);
 		return NULL;
 	}

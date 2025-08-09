@@ -281,8 +281,7 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 				};
 				if (timerfd_settime(state->timer_fd, 0,
 						&timer_spec, NULL) == -1) {
-					wlchewing_err("Failed to arm timer: %s",
-						strerror(errno));
+					wlchewing_perr("Failed to arm timer");
 				}
 			}
 		}
@@ -330,9 +329,8 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 					if (timerfd_settime(state->timer_fd, 0,
 							&timer_disarm,
 							NULL) == -1) {
-						wlchewing_err(
-							"Failed to disarm timer: %s",
-							strerror(errno));
+						wlchewing_perr(
+							"Failed to disarm timer");
 					}
 				}
 				return;
@@ -435,14 +433,14 @@ static void handle_done(void *data,
 	if (state->pending_activate && !state->activated) {
 		state->kb_grab = zwp_input_method_v2_grab_keyboard(
 			state->input_method);
-		zwp_input_method_keyboard_grab_v2_add_listener(state->kb_grab,
-			&grab_listener, state);
-		state->activated = state->pending_activate;
-
+		// sanity check if compositor doesn't really impl it
 		if (!state->kb_grab) {
 			wlchewing_err("Failed to grab");
 			exit(EXIT_FAILURE);
 		}
+		zwp_input_method_keyboard_grab_v2_add_listener(state->kb_grab,
+			&grab_listener, state);
+		state->activated = state->pending_activate;
 	} else if (!state->pending_activate && state->activated) {
 		zwp_input_method_keyboard_grab_v2_release(state->kb_grab);
 		state->kb_grab = NULL;

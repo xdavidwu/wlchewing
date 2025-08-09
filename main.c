@@ -1,5 +1,4 @@
 #include <assert.h>
-#include <errno.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <signal.h>
@@ -124,8 +123,7 @@ int main(int argc, char *argv[]) {
 
 	int epoll_fd = epoll_create1(EPOLL_CLOEXEC);
 	if (epoll_fd < 0) {
-		wlchewing_err("Failed to create epoll: %s",
-			strerror(errno));
+		wlchewing_perr("Failed to create epoll");
 		return EXIT_FAILURE;
 	}
 
@@ -138,15 +136,14 @@ int main(int argc, char *argv[]) {
 	};
 	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, display_fd, &display_epoll)
 			== -1) {
-		wlchewing_err("Failed to add display epoll: %s",
-			strerror(errno));
+		wlchewing_perr("Failed to add display epoll");
 		return EXIT_FAILURE;
 	}
 
 	state->timer_fd = timerfd_create(CLOCK_MONOTONIC,
 		TFD_NONBLOCK | TFD_CLOEXEC);
 	if (state->timer_fd < 0) {
-		wlchewing_err("Failed to create timer: %s", strerror(errno));
+		wlchewing_perr("Failed to create timer");
 		return EXIT_FAILURE;
 	}
 	struct epoll_event timer_epoll = {
@@ -156,7 +153,7 @@ int main(int argc, char *argv[]) {
 		},
 	};
 	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, state->timer_fd, &timer_epoll) < 0) {
-		wlchewing_err("Failed to add timer epoll: %s", strerror(errno));
+		wlchewing_perr("Failed to add timer epoll");
 		return EXIT_FAILURE;
 	}
 
@@ -175,7 +172,7 @@ int main(int argc, char *argv[]) {
 			},
 		};
 		if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, bus_fd, &bus_epoll) < 0) {
-			wlchewing_err("Failed to add bus epoll: %s", strerror(errno));
+			wlchewing_perr("Failed to add bus epoll");
 			return EXIT_FAILURE;
 		}
 	}
@@ -188,11 +185,11 @@ int main(int argc, char *argv[]) {
 	sa.sa_flags = SA_RESETHAND;
 
 	if (sigaction(SIGTERM, &sa, NULL) < 0) {
-		wlchewing_err("Failed to set SIGTERM handler: %s", strerror(errno));
+		wlchewing_perr("Failed to set SIGTERM handler");
 		return EXIT_FAILURE;
 	}
 	if (sigaction(SIGINT, &sa, NULL) < 0) {
-		wlchewing_err("Failed to set SIGINT handler: %s", strerror(errno));
+		wlchewing_perr("Failed to set SIGINT handler");
 		return EXIT_FAILURE;
 	}
 

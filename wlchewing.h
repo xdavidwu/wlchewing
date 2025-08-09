@@ -2,10 +2,11 @@
 #define WLCHEWING_H
 
 #include <chewing.h>
+#include <errno.h> // usage in macro
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h> // usage in macro
 #include <wayland-client-protocol.h>
 #include <wayland-client.h>
 #include <wayland-util.h>
@@ -80,6 +81,7 @@ int im_key_press(struct wlchewing_state *state, uint32_t key);
 void im_release_all_keys(struct wlchewing_state *state);
 
 #define wlchewing_err(fmt, ...) fprintf(stderr, "[%s:%d] " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+#define wlchewing_perr(fmt, ...) wlchewing_err(fmt ": %s", ##__VA_ARGS__, strerror(errno))
 
 #define KEY_HANDLE_FORWARD	(1 << 0)
 #define KEY_HANDLE_ARM_TIMER	(1 << 1)
