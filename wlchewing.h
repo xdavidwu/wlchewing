@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h> // usage in macro
+#include <time.h>
 #include <wayland-client-protocol.h>
 #include <wayland-client.h>
 #include <wayland-util.h>
@@ -60,7 +61,7 @@ struct wlchewing_state {
 	struct xkb_context *xkb_context;
 	struct xkb_state *xkb_state;
 	char *xkb_keymap_string;
-	int32_t kb_delay, kb_rate;
+	struct itimerspec repeat_info;
 
 	uint32_t last_key;
 	int timer_fd;

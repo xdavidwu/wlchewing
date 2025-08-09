@@ -5,6 +5,8 @@
 #include "wlchewing.h"
 #include "xmem.h"
 
+static struct itimerspec timer_disarm = {0};
+
 static int32_t get_millis() {
 	struct timespec spec;
 	clock_gettime(CLOCK_MONOTONIC, &spec);
@@ -264,22 +266,10 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 			newkey->key = key;
 			wl_list_insert(&state->pending_handled_keysyms,
 				&newkey->link);
-			if (state->kb_rate != 0) {
+			if (state->repeat_info.it_interval.tv_nsec != 0) {
 				state->last_key = key;
-				struct itimerspec timer_spec = {
-					.it_interval = {
-						.tv_sec = 0,
-						.tv_nsec = 1000 * 1000 * 1000 /
-							state->kb_rate,
-					},
-					.it_value = {
-						.tv_sec = 0,
-						.tv_nsec = state->kb_delay *
-							1000 * 1000,
-					},
-				};
 				if (timerfd_settime(state->timer_fd, 0,
-						&timer_spec, NULL) == -1) {
+						&state->repeat_info, NULL) == -1) {
 					wlchewing_perr("Failed to arm timer");
 				}
 			}
@@ -324,7 +314,6 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 				free(mkeysym);
 				if (key == state->last_key) {
 					state->last_key = 0;
-					struct itimerspec timer_disarm = {0};
 					if (timerfd_settime(state->timer_fd, 0,
 							&timer_disarm,
 							NULL) == -1) {
@@ -394,8 +383,9 @@ static void handle_repeat_info(void *data,
 		*zwp_input_method_keyboard_grab_v2, int32_t rate,
 		int32_t delay) {
 	struct wlchewing_state *state = data;
-	state->kb_delay = delay;
-	state->kb_rate = rate;
+	state->repeat_info.it_interval.tv_nsec = rate ? 1000 * 1000 * 1000 / rate : 0;
+	state->repeat_info.it_value.tv_sec = delay / 1000;
+	state->repeat_info.it_value.tv_nsec = (delay % 1000) * 1000 * 1000;
 }
 
 static const struct zwp_input_method_keyboard_grab_v2_listener grab_listener = {
