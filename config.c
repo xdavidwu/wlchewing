@@ -112,25 +112,15 @@ int config_read_opts(int argc, char *argv[], struct wlchewing_config *config) {
 			config->anchor_top = true;
 			break;
 		case 'T':
-			if (decode_color(optarg, config->text_color) < 0) {
-				fprintf(stderr, help, argv[0]);
-				return -EINVAL;
-			}
-			break;
 		case 'b':
-			if (decode_color(optarg, config->background_color) < 0) {
-				fprintf(stderr, help, argv[0]);
-				return -EINVAL;
-			}
-			break;
 		case 's':
-			if (decode_color(optarg, config->selection_color) < 0) {
-				fprintf(stderr, help, argv[0]);
-				return -EINVAL;
-			}
-			break;
 		case 'S':
-			if (decode_color(optarg, config->selection_text_color) < 0) {
+			if (decode_color(optarg,
+					opt == 'T' ? config->text_color :
+					opt == 'b' ? config->background_color :
+					opt == 's' ? config->selection_color :
+					config->selection_text_color // S
+					) < 0) {
 				fprintf(stderr, help, argv[0]);
 				return -EINVAL;
 			}
