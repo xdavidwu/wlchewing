@@ -137,6 +137,7 @@ int config_read_opts(int argc, char *argv[], struct wlchewing_config *config) {
 			break;
 		case 'n':
 			config->tray_icon = false;
+			break;
 		case 1:
 			config->chewing_use_xkb_default = true;
 			break;
