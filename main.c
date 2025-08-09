@@ -83,7 +83,7 @@ static const struct wl_registry_listener registry_listener = {
 };
 
 static void output_scale(void *data, struct wl_output *output, int32_t scale) {
-	int32_t *user_data = xcalloc(sizeof(int32_t), 1);
+	int32_t *user_data = xcalloc(1, sizeof(int32_t));
 	*user_data = scale;
 	wl_output_set_user_data(output, user_data);
 }
