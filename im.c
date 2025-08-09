@@ -389,10 +389,10 @@ static void handle_repeat_info(void *data,
 }
 
 static const struct zwp_input_method_keyboard_grab_v2_listener grab_listener = {
-	.key = handle_key,
-	.modifiers = handle_modifiers,
-	.keymap = handle_keymap,
-	.repeat_info = handle_repeat_info,
+	.key		= handle_key,
+	.modifiers	= handle_modifiers,
+	.keymap		= handle_keymap,
+	.repeat_info	= handle_repeat_info,
 };
 
 static void handle_activate(void *data,
@@ -429,7 +429,6 @@ static void handle_done(void *data,
 		}
 		zwp_input_method_keyboard_grab_v2_add_listener(state->kb_grab,
 			&grab_listener, state);
-		state->activated = state->pending_activate;
 	} else if (!state->pending_activate && state->activated) {
 		zwp_input_method_keyboard_grab_v2_release(state->kb_grab);
 		state->kb_grab = NULL;
@@ -466,10 +465,6 @@ void im_release_all_keys(struct wlchewing_state *state) {
 		free(mkeysym);
 	}
 }
-
-/* TODO for adding panel with input-method support
- * currently only panel with wlr-layer-shell
- */
 
 void im_setup(struct wlchewing_state *state) {
 	state->forwarding = state->config->start_eng;
