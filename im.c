@@ -31,6 +31,22 @@ static bool commit_bottom_panel(struct wlchewing_state *state, int offset) {
 	return true;
 }
 
+static int count_utf8_bytes(const char *s, int codepoints) {
+	int byte_cursor = 0;
+	for (int i = 0; i < codepoints; i++) {
+		uint8_t byte = s[byte_cursor];
+		if (!(byte & 0x80)) {
+			byte_cursor += 1;
+		} else {
+			while (byte & 0x80) {
+				byte <<= 1;
+				byte_cursor++;
+			}
+		}
+	}
+	return byte_cursor;
+}
+
 int im_key_press(struct wlchewing_state *state, uint32_t key) {
 	xkb_keysym_t keysym = xkb_state_key_get_one_sym(state->xkb_state,
 		key + 8);
@@ -79,7 +95,7 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 
 	if (state->bottom_panel) {
 		bool need_update = false;
-		switch(keysym){
+		switch (keysym) {
 		case XKB_KEY_Return:
 		case XKB_KEY_KP_Enter:
 			need_update = commit_bottom_panel(state, 0);
@@ -142,7 +158,7 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 		}
 	} else {
 		bool handled = true;
-		switch(keysym){
+		switch (keysym) {
 		case XKB_KEY_BackSpace:
 			chewing_handle_Backspace(state->chewing);
 			break;
@@ -179,19 +195,18 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 			}
 			handled = false;
 			break;
+		case XKB_KEY_Up:
+		case XKB_KEY_KP_Up:
+			// consume if dirty
+			handled = chewing_buffer_Check(state->chewing) ||
+				chewing_bopomofo_Check(state->chewing);
+			break;
 		default:
 			// printable characters
 			if (keysym >= XKB_KEY_space &&
 					keysym <= XKB_KEY_asciitilde) {
 				chewing_handle_Default(state->chewing,
 					(char)xkb_keysym_to_utf32(keysym));
-			} else {
-				bool has_content =
-					chewing_buffer_Check(state->chewing) ||
-					chewing_bopomofo_Check(state->chewing);
-				handled = has_content && (
-					(keysym == XKB_KEY_Up) ||
-					(keysym == XKB_KEY_KP_Up));
 			}
 		}
 		if (!handled || chewing_keystroke_CheckIgnore(state->chewing)) {
@@ -201,29 +216,16 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 
 	const char *precommit = chewing_buffer_String_static(state->chewing);
 	const char *bopomofo = chewing_bopomofo_String_static(state->chewing);
-	int chewing_cursor = chewing_cursor_Current(state->chewing);
-	// chewing_cursor here is counted in utf-8 characters, not in bytes
-	int byte_cursor = 0;
-	for (int i = 0; i < chewing_cursor ; i++) {
-		uint8_t byte = precommit[byte_cursor];
-		if (!(byte & 0x80)) {
-			byte_cursor += 1;
-		}
-		else {
-			while (byte & 0x80) {
-				byte <<= 1;
-				byte_cursor++;
-			}
-		}
-	}
+	int cursor = count_utf8_bytes(precommit,
+		chewing_cursor_Current(state->chewing));
 	char *preedit = xcalloc(strlen(precommit) + strlen(bopomofo) + 1,
 		sizeof(char));
-	strncat(preedit, precommit, byte_cursor);
+	strncat(preedit, precommit, cursor);
 	strcat(preedit, bopomofo);
-	strcat(preedit, &precommit[byte_cursor]);
+	strcat(preedit, &precommit[cursor]);
 	bool need_hack = strlen(preedit) == 0;
 	zwp_input_method_v2_set_preedit_string(state->input_method, preedit,
-		byte_cursor, byte_cursor + strlen(bopomofo));
+		cursor, cursor + strlen(bopomofo));
 	free(preedit);
 	if (chewing_commit_Check(state->chewing)) {
 		zwp_input_method_v2_commit_string(state->input_method, 
