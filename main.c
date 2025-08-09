@@ -5,6 +5,7 @@
 #include <sys/epoll.h>
 #include <sys/timerfd.h>
 
+#include "xmem.h"
 #include "wlchewing.h"
 #include "bottom-panel.h"
 #include "sni.h"
@@ -55,8 +56,7 @@ static const struct wl_registry_listener registry_listener = {
 };
 
 static void output_scale(void *data, struct wl_output *output, int32_t scale) {
-	int32_t *user_data = malloc(sizeof(int32_t));
-	assert(user_data);
+	int32_t *user_data = xcalloc(sizeof(int32_t), 1);
 	*user_data = scale;
 	wl_output_set_user_data(output, user_data);
 }
@@ -71,10 +71,6 @@ static const struct wl_output_listener output_listener = {
 int main(int argc, char *argv[]) {
 	struct wlchewing_state *state = &global_state;
 	state->config = config_new();
-	if (!state->config) {
-		wlchewing_err("Failed to allocate space for config");
-		return EXIT_FAILURE;
-	}
 	if (config_read_opts(argc, argv, state->config) < 0) {
 		return EXIT_FAILURE;
 	}
@@ -138,11 +134,7 @@ int main(int argc, char *argv[]) {
 
 	int bus_fd;
 	if (state->config->tray_icon) {
-		state->sni = calloc(1, sizeof(struct wlchewing_sni));
-		if (state->sni == NULL) {
-			wlchewing_err("Failed to calloc SNI state");
-			return EXIT_FAILURE;
-		}
+		state->sni = xcalloc(1, sizeof(struct wlchewing_sni));
 		bus_fd = sni_setup(state->sni);
 		if (bus_fd < 0) {
 			wlchewing_err("Failed to setup dbus: %s", strerror(-bus_fd));

@@ -47,7 +47,7 @@ static int handle_owner_changed(sd_bus_message *m, void *userdata,
 }
 
 int sni_set_icon(struct wlchewing_sni *sni, bool english) {
-	if (!sni) {
+	if (sni == NULL) {
 		return 0;
 	}
 	if (english == sni->english) {

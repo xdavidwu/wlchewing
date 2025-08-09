@@ -1,9 +1,9 @@
+#include "xmem.h"
 #include "config.h"
 
 #include <errno.h>
 #include <getopt.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 static const struct option long_options[] = {
@@ -45,11 +45,8 @@ Usage: %s [OPTIONS]...\n\
 COLOR is color specified as either #RRGGBB or #RRGGBBAA.\n";
 
 struct wlchewing_config *config_new() {
-	struct wlchewing_config *config = calloc(1,
+	struct wlchewing_config *config = xcalloc(1,
 		sizeof(struct wlchewing_config));
-	if (!config) {
-		return NULL;
-	}
 	config->text_color[0] = 1.0;
 	config->text_color[1] = 1.0;
 	config->text_color[2] = 1.0;

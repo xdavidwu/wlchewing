@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdbool.h>
 
+#include "xmem.h"
 #include "wlchewing.h"
 #include "buffer.h"
 #include "bottom-panel.h"
@@ -113,9 +114,8 @@ int bottom_panel_init(struct wlchewing_state *state) {
 
 struct wlchewing_bottom_panel *bottom_panel_new(struct wlchewing_state *state) {
 	assert(state->bottom_panel_text_layout);
-	struct wlchewing_bottom_panel *panel = calloc(1,
+	struct wlchewing_bottom_panel *panel = xcalloc(1,
 		sizeof(struct wlchewing_bottom_panel));
-	assert(panel);
 	panel->scale = 1;
 	panel->height = state->bottom_panel_text_height;
 	panel->width = 1;

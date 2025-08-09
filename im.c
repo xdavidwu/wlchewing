@@ -3,6 +3,7 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
+#include "xmem.h"
 #include "wlchewing.h"
 
 static int32_t get_millis() {
@@ -214,7 +215,7 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 			}
 		}
 	}
-	char *preedit = calloc(strlen(precommit) + strlen(bopomofo) + 1,
+	char *preedit = xcalloc(strlen(precommit) + strlen(bopomofo) + 1,
 		sizeof(char));
 	strncat(preedit, precommit, byte_cursor);
 	strcat(preedit, bopomofo);
@@ -247,7 +248,7 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 				time, key, key_state);
 			// record press sent keys,
 			// to pop pending release on deactivate
-			struct wlchewing_keysym *newkey = calloc(1,
+			struct wlchewing_keysym *newkey = xcalloc(1,
 				sizeof(struct wlchewing_keysym));
 			newkey->key = key;
 			wl_list_insert(&state->press_sent_keysyms,
@@ -259,7 +260,7 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 		}
 		if (handle_action & KEY_HANDLE_ARM_TIMER) {
 			// record that we should not forward key release
-			struct wlchewing_keysym *newkey = calloc(1,
+			struct wlchewing_keysym *newkey = xcalloc(1,
 				sizeof(struct wlchewing_keysym));
 			newkey->key = key;
 			wl_list_insert(&state->pending_handled_keysyms,

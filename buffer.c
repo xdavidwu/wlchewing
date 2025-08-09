@@ -1,3 +1,4 @@
+#include "xmem.h"
 #include "wlchewing.h"
 #include "buffer.h"
 
@@ -28,11 +29,7 @@ static void mktempname(char *template) {
 
 struct wlchewing_buffer *buffer_new(struct wl_shm *shm,
 		uint32_t width, uint32_t height, uint32_t scale) {
-	struct wlchewing_buffer *buffer = calloc(1, sizeof(struct wlchewing_buffer));
-	if (buffer == NULL){
-		wlchewing_err("Failed to calloc for wlchewing_buffer");
-		return NULL;
-	}
+	struct wlchewing_buffer *buffer = xcalloc(1, sizeof(struct wlchewing_buffer));
 	buffer->width = width;
 	buffer->height = height;
 	buffer->scale = scale;
@@ -92,11 +89,7 @@ void buffer_destroy(struct wlchewing_buffer *buffer) {
 
 struct wl_list *buffer_pool_new(struct wl_shm *shm,
 		uint32_t width, uint32_t height, uint32_t scale) {
-	struct wl_list *pool = calloc(1, sizeof(struct wl_list));
-	if (pool == NULL) {
-		wlchewing_err("Failed to calloc wl_list for buffer pool");
-		return NULL;
-	}
+	struct wl_list *pool = xcalloc(1, sizeof(struct wl_list));
 	wl_list_init(pool);
 	struct wlchewing_buffer *buffer = buffer_new(shm, width, height, scale);
 	buffer->available = true;
