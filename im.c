@@ -461,9 +461,9 @@ static void handle_done(void *data,
 static const struct zwp_input_method_v2_listener im_listener = {
 	.activate = handle_activate,
 	.deactivate = handle_deactivate,
-	.surrounding_text = (void (*)(void *, struct zwp_input_method_v2 *, const char *, uint32_t,  uint32_t))noop,
-	.text_change_cause = (void (*)(void *, struct zwp_input_method_v2 *, uint32_t))noop,
-	.content_type = (void (*)(void *, struct zwp_input_method_v2 *, uint32_t,  uint32_t))noop,
+	.surrounding_text = (typeof(im_listener.surrounding_text))noop,
+	.text_change_cause = (typeof(im_listener.text_change_cause))noop,
+	.content_type = (typeof(im_listener.content_type))noop,
 	.done = handle_done,
 	.unavailable = handle_unavailable,
 };
