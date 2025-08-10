@@ -47,14 +47,9 @@ static void bottom_panel_configure(struct wlchewing_state *state,
 		state->bottom_panel_test_buffer->wl_buffer, 0, 0);
 	zwlr_layer_surface_v1_set_size(panel->layer_surface, 0, panel->height);
 
-	if (state->config->dock == DOCK_DOCK) {
-		zwlr_layer_surface_v1_set_exclusive_zone(panel->layer_surface,
-			panel->height);
-	} else if (state->config->dock == DOCK_YEILD) {
-		zwlr_layer_surface_v1_set_exclusive_zone(panel->layer_surface, 0);
-	} else {
-		zwlr_layer_surface_v1_set_exclusive_zone(panel->layer_surface, -1);
-	}
+	zwlr_layer_surface_v1_set_exclusive_zone(panel->layer_surface,
+		state->config->dock == DOCK_DOCK ? panel->height :
+		state->config->dock == DOCK_YEILD ? 0 : -1);
 
 	wl_surface_commit(panel->wl_surface);
 	wl_display_roundtrip(state->display);
@@ -171,7 +166,7 @@ void bottom_panel_render(struct wlchewing_state *state) {
 
 	int offset = 0, total_offset = 0;
 	for (int i = state->bottom_panel->selected_index; i < total &&
-			total_offset < state->bottom_panel->width; i++) {
+			total_offset < pool->width; i++) {
 		cairo_translate(cairo, offset, 0);
 		offset = render_cand(state, buffer,
 			chewing_cand_string_by_index_static(state->chewing, i),
