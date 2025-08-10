@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #include "bottom-panel.h"
 #include "buffer.h"
@@ -59,12 +60,20 @@ static void bottom_panel_configure(struct wlchewing_state *state,
 static const int cand_padding = 4;
 
 static int render_cand(struct wlchewing_state *state,
-		struct wlchewing_buffer *buffer, const char *text, bool selected) {
-	pango_layout_set_text(state->bottom_panel_text_layout, text, -1);
+		struct wlchewing_buffer *buffer, const char *text, int index) {
+	if (state->config->key_hint && index < 10) {
+		char *markup = xcalloc(strlen(text) + 27, sizeof(char));
+		sprintf(markup, "<sup><small>%d</small></sup>%s", index == 9 ? 0 : index + 1, text);
+		pango_layout_set_markup(state->bottom_panel_text_layout, markup, -1);
+		free(markup);
+	} else {
+		pango_layout_set_attributes(state->bottom_panel_text_layout, NULL);
+		pango_layout_set_text(state->bottom_panel_text_layout, text, -1);
+	}
 	int width;
 	pango_layout_get_pixel_size(state->bottom_panel_text_layout, &width, NULL);
 
-	if (selected) {
+	if (!index) {
 		cairo_set_source_rgba(buffer->cairo,
 			state->config->selection_color[0],
 			state->config->selection_color[1],
@@ -74,7 +83,7 @@ static int render_cand(struct wlchewing_state *state,
 		cairo_fill(buffer->cairo);
 	}
 
-	const double *text_color = selected ?
+	const double *text_color = !index ?
 		state->config->selection_text_color :
 		state->config->text_color;
 	cairo_set_source_rgba(buffer->cairo, text_color[0], text_color[1],
@@ -165,12 +174,12 @@ void bottom_panel_render(struct wlchewing_state *state) {
 	cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
 
 	int offset = 0, total_offset = 0;
-	for (int i = state->bottom_panel->selected_index; i < total &&
+	for (int i = 0; i < total - state->bottom_panel->selected_index &&
 			total_offset < pool->width; i++) {
 		cairo_translate(cairo, offset, 0);
 		offset = render_cand(state, buffer,
-			chewing_cand_string_by_index_static(state->chewing, i),
-			i == state->bottom_panel->selected_index);
+			chewing_cand_string_by_index_static(state->chewing,
+				i + state->bottom_panel->selected_index), i);
 		total_offset += offset;
 	}
 	cairo_restore(cairo);

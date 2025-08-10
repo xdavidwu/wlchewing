@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <getopt.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -17,6 +18,7 @@ static const struct option long_options[] = {
 	{"selection-text-color",required_argument,	NULL,	'S'},
 	{"no-tray-icon",	no_argument,		NULL,	'n'},
 	{"force-default-keymap",no_argument,		NULL,	1},
+	{"no-num-key-hint",	no_argument,		NULL,	2},
 	{0},
 };
 
@@ -40,7 +42,8 @@ Usage: %s [OPTIONS]...\n\
   -s, --selection-color=COLOR   Set candidate panel selection highlight color\n\
   -S, --selection-text-color=COLOR\n\
                                 Set candidate panel selection text color\n\
-  -n, --no-tray-icon            Disable tray icon.\n\
+  -n, --no-tray-icon            Disable tray icon\n\
+      --no-num-key-hint         Disable number key display on candidate panel\n\
 \n\
 COLOR is color specified as either #RRGGBB or #RRGGBBAA.\n";
 
@@ -61,6 +64,7 @@ struct wlchewing_config *config_new() {
 	config->selection_color[2] = 0.25;
 	config->selection_color[3] = 1.0;
 	config->tray_icon = true;
+	config->key_hint = true;
 	return config;
 }
 
@@ -130,6 +134,9 @@ int config_read_opts(int argc, char *argv[], struct wlchewing_config *config) {
 			break;
 		case 1:
 			config->chewing_use_xkb_default = true;
+			break;
+		case 2:
+			config->key_hint = false;
 			break;
 		}
 	}

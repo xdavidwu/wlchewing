@@ -10,16 +10,17 @@ enum dock_option {
 };
 
 struct wlchewing_config {
-	bool start_eng;
 	enum dock_option dock;
 	const char *font;
-	bool anchor_top;
 	double text_color[4];
 	double background_color[4];
 	double selection_color[4];
 	double selection_text_color[4];
-	bool chewing_use_xkb_default;
+	bool start_eng;
+	bool anchor_top;
 	bool tray_icon;
+	bool key_hint;
+	bool chewing_use_xkb_default;
 };
 
 struct wlchewing_config *config_new();
