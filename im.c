@@ -31,6 +31,26 @@ static bool commit_bottom_panel(struct wlchewing_state *state, int offset) {
 	return true;
 }
 
+void im_candidates_move_by(struct wlchewing_state *state, int diff) {
+	if (!state->bottom_panel) {
+		return;
+	}
+	int to = state->bottom_panel->selected_index + diff;
+	if (to < 0) {
+		to = 0;
+	} else {
+		int max = chewing_cand_TotalChoice(state->chewing) - 1;
+		if (to > max) {
+			to = max;
+		}
+	}
+	if (state->bottom_panel->selected_index != to) {
+		state->bottom_panel->selected_index = to;
+		bottom_panel_render(state);
+		wl_display_roundtrip(state->display);
+	}
+}
+
 static int count_utf8_bytes(const char *s, int codepoints) {
 	int byte_cursor = 0;
 	for (int i = 0; i < codepoints; i++) {
@@ -114,21 +134,11 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 			break;
 		case XKB_KEY_Left:
 		case XKB_KEY_KP_Left:
-			if (state->bottom_panel->selected_index > 0) {
-				state->bottom_panel->selected_index--;
-				bottom_panel_render(state);
-				wl_display_roundtrip(state->display);
-			}
+			im_candidates_move_by(state, -1);
 			break;
 		case XKB_KEY_Right:
 		case XKB_KEY_KP_Right:
-			if (state->bottom_panel->selected_index
-					< chewing_cand_TotalChoice(
-						state->chewing) - 1) {
-				state->bottom_panel->selected_index++;
-				bottom_panel_render(state);
-				wl_display_roundtrip(state->display);
-			}
+			im_candidates_move_by(state, 1);
 			break;
 		case XKB_KEY_Up:
 		case XKB_KEY_KP_Up:

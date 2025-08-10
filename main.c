@@ -28,7 +28,7 @@ struct global_map_el {
 		(void **)&global_state.wl_globals.shm,
 	},
 	{
-		&wl_seat_interface, 0, // not used directly yet, request the latest one
+		&wl_seat_interface, 5,
 		(void **)&global_state.wl_globals.seat,
 	},
 	{
@@ -95,6 +95,40 @@ static const struct wl_output_listener output_listener = {
 	.done		= (typeof(output_listener.done))noop
 };
 
+static void pointer_axis_discrete(void *data, struct wl_pointer *wl_pointer,
+		uint32_t axis, int32_t discrete) {
+	im_candidates_move_by(data, discrete);
+}
+
+static const struct wl_pointer_listener pointer_listener = {
+	.enter	= (typeof(pointer_listener.enter))noop,
+	.leave	= (typeof(pointer_listener.leave))noop,
+	.motion	= (typeof(pointer_listener.motion))noop,
+	.button	= (typeof(pointer_listener.button))noop,
+	.axis	= (typeof(pointer_listener.axis))noop, // TODO touchpad
+	.frame	= (typeof(pointer_listener.frame))noop,
+	.axis_source	= (typeof(pointer_listener.axis_source))noop,
+	.axis_stop	= (typeof(pointer_listener.axis_stop))noop,
+	.axis_discrete	= pointer_axis_discrete, // TODO
+
+};
+
+static void seat_capabilities(void *data, struct wl_seat *seat, uint32_t capabilities) {
+	struct wlchewing_state *state = data;
+	if ((capabilities & WL_SEAT_CAPABILITY_POINTER) && !state->pointer) {
+		state->pointer = wl_seat_get_pointer(seat);
+		wl_pointer_add_listener(state->pointer, &pointer_listener, state);
+	} else if (!(capabilities & WL_SEAT_CAPABILITY_POINTER) && state->pointer) {
+		wl_pointer_release(state->pointer);
+		state->pointer = NULL;
+	}
+}
+
+static const struct wl_seat_listener seat_listener = {
+	.capabilities	= seat_capabilities,
+	.name		= (typeof(seat_listener.name))noop,
+};
+
 static inline int must_errno(int ret, const char *op) {
 	if (ret < 0) {
 		wlchewing_perr("Failed to %s", op);
@@ -135,6 +169,9 @@ int main(int argc, char *argv[]) {
 		}
 		el++;
 	}
+
+	wl_seat_add_listener(state->wl_globals.seat, &seat_listener, state);
+	wl_display_roundtrip(state->display);
 
 	int epoll_fd = must_errno(epoll_create1(EPOLL_CLOEXEC), "setup epoll");
 

@@ -48,6 +48,8 @@ struct wlchewing_state {
 
 	struct zwp_virtual_keyboard_v1 *virtual_keyboard;
 
+	struct wl_pointer *pointer;
+
 	struct wlchewing_bottom_panel *bottom_panel;
 	PangoLayout *bottom_panel_text_layout;
 	uint32_t bottom_panel_text_height;
@@ -78,6 +80,8 @@ void im_destory(struct wlchewing_state *state);
 int im_key_press(struct wlchewing_state *state, uint32_t key);
 
 void im_release_all_keys(struct wlchewing_state *state);
+
+void im_candidates_move_by(struct wlchewing_state *state, int diff);
 
 #define _wlchewing_errloc(fmt, ...) fprintf(stderr, "[%s:%d] " fmt "\n", ##__VA_ARGS__)
 #define wlchewing_err(fmt, ...) _wlchewing_errloc(fmt, __FILE__, __LINE__, ##__VA_ARGS__)
