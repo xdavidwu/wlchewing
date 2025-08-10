@@ -9,7 +9,6 @@ struct wlchewing_buffer {
 	void *data;
 	off_t size;
 	struct wl_buffer *wl_buffer;
-	cairo_surface_t *cairo_surface;
 	cairo_t *cairo;
 	bool available;
 

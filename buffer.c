@@ -32,9 +32,9 @@ struct wlchewing_buffer *buffer_new(struct wl_shm *shm,
 		return NULL;
 	}
 
-	off_t stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32,
-		width * scale);
-	buffer->size = (height * scale) * stride;
+	uint32_t widthpx = width * scale, heightpx = height * scale;
+	off_t stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, widthpx);
+	buffer->size = heightpx * stride;
 	int ret = ftruncate(fd, buffer->size);
 	if (ret == -1) {
 		wlchewing_err("Failed to ftruncate");
@@ -51,16 +51,16 @@ struct wlchewing_buffer *buffer_new(struct wl_shm *shm,
 	}
 
 	struct wl_shm_pool *pool = wl_shm_create_pool(shm, fd, buffer->size);
-	buffer->wl_buffer = wl_shm_pool_create_buffer(pool, 0, width * scale,
-		height * scale, stride, WL_SHM_FORMAT_ARGB8888);
+	buffer->wl_buffer = wl_shm_pool_create_buffer(pool, 0, widthpx,
+		heightpx, stride, WL_SHM_FORMAT_ARGB8888);
 	wl_buffer_add_listener(buffer->wl_buffer, &buffer_listener, buffer);
 	wl_shm_pool_destroy(pool);
 	close(fd);
 
-	buffer->cairo_surface = cairo_image_surface_create_for_data(
-		buffer->data, CAIRO_FORMAT_ARGB32, width * scale,
-		height * scale, stride);
-	buffer->cairo = cairo_create(buffer->cairo_surface);
+	cairo_surface_t *surface = cairo_image_surface_create_for_data(
+		buffer->data, CAIRO_FORMAT_ARGB32, widthpx, heightpx, stride);
+	buffer->cairo = cairo_create(surface);
+	cairo_surface_destroy(surface);
 	cairo_scale(buffer->cairo, scale, scale);
 	return buffer;
 }
@@ -68,7 +68,6 @@ struct wlchewing_buffer *buffer_new(struct wl_shm *shm,
 void buffer_destroy(struct wlchewing_buffer *buffer) {
 	wl_buffer_destroy(buffer->wl_buffer);
 	cairo_destroy(buffer->cairo);
-	cairo_surface_destroy(buffer->cairo_surface);
 	munmap(buffer->data, buffer->size);
 	free(buffer);
 }
