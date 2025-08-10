@@ -1,3 +1,5 @@
+#define _GNU_SOURCE // memfd
+
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -18,31 +20,17 @@ static const struct wl_buffer_listener buffer_listener = {
 	.release	= handle_release,
 };
 
-static void mktempname(char *template) {
-	struct timespec ts;
-	unsigned long r;
-
-	clock_gettime(CLOCK_REALTIME, &ts);
-	r = (ts.tv_nsec * 65537) ^ ((uintptr_t)&ts / 16 + (uintptr_t)template);
-	for (int i = 0; i < 6; i++, r >>= 5)
-		template[i] = 'A' + ( r & 15 ) + ( r & 16 ) * 2;
-}
-
 struct wlchewing_buffer *buffer_new(struct wl_shm *shm,
 		uint32_t width, uint32_t height, uint32_t scale) {
 	struct wlchewing_buffer *buffer = xcalloc(1, sizeof(struct wlchewing_buffer));
 	buffer->available = true;
 
-	char *template = xstrdup("/wlchewing-XXXXXX");
-	mktempname(&template[11]);
-	int fd = shm_open(template, O_RDWR | O_CREAT | O_EXCL, 0600);
+	int fd = memfd_create("", MFD_CLOEXEC);
 	if (fd < 0) {
-		wlchewing_perr("Failed to shm_open");
+		wlchewing_perr("Failed to create anonymous file for buffer");
 		free(buffer);
 		return NULL;
 	}
-	shm_unlink(template);
-	free(template);
 
 	off_t stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32,
 		width * scale);
