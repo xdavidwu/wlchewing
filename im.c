@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <sys/mman.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
@@ -19,16 +20,62 @@ static void noop() {
 
 static void vte_hack(struct wlchewing_state *state);
 
-static bool commit_bottom_panel(struct wlchewing_state *state, int offset) {
+static int count_utf8_bytes(const char *s, int codepoints) {
+	int byte_cursor = 0;
+	for (int i = 0; i < codepoints; i++) {
+		uint8_t byte = s[byte_cursor];
+		if (!(byte & 0x80)) {
+			byte_cursor += 1;
+		} else {
+			while (byte & 0x80) {
+				byte <<= 1;
+				byte_cursor++;
+			}
+		}
+	}
+	return byte_cursor;
+}
+
+static void im_update(struct wlchewing_state *state) {
+	const char *precommit = chewing_buffer_String_static(state->chewing);
+	const char *bopomofo = chewing_bopomofo_String_static(state->chewing);
+	int cursor = count_utf8_bytes(precommit,
+		chewing_cursor_Current(state->chewing));
+	char *preedit = xcalloc(strlen(precommit) + strlen(bopomofo) + 1,
+		sizeof(char));
+	strncat(preedit, precommit, cursor);
+	strcat(preedit, bopomofo);
+	strcat(preedit, &precommit[cursor]);
+	bool need_hack = strlen(preedit) == 0;
+	zwp_input_method_v2_set_preedit_string(state->input_method, preedit,
+		cursor, cursor + strlen(bopomofo));
+	free(preedit);
+	if (chewing_commit_Check(state->chewing)) {
+		zwp_input_method_v2_commit_string(state->input_method, 
+			chewing_commit_String_static(state->chewing));
+		chewing_ack(state->chewing);
+	}
+	zwp_input_method_v2_commit(state->input_method, state->serial);
+	wl_display_roundtrip(state->display);
+	if (need_hack) {
+		vte_hack(state);
+	}
+}
+
+void im_commit_candidate(struct wlchewing_state *state, int offset) {
+	if (!state->bottom_panel) {
+		return;
+	}
 	int index = state->bottom_panel->selected_index + offset;
 	if (index >= chewing_cand_TotalChoice(state->chewing)) {
-		return false;
+		return;
 	}
 	chewing_cand_choose_by_index(state->chewing, index);
 	chewing_cand_close(state->chewing);
 	bottom_panel_destroy(state->bottom_panel);
 	state->bottom_panel = NULL;
-	return true;
+	im_update(state);
+	return;
 }
 
 void im_candidates_move_by(struct wlchewing_state *state, int diff) {
@@ -49,22 +96,6 @@ void im_candidates_move_by(struct wlchewing_state *state, int diff) {
 		bottom_panel_render(state);
 		wl_display_roundtrip(state->display);
 	}
-}
-
-static int count_utf8_bytes(const char *s, int codepoints) {
-	int byte_cursor = 0;
-	for (int i = 0; i < codepoints; i++) {
-		uint8_t byte = s[byte_cursor];
-		if (!(byte & 0x80)) {
-			byte_cursor += 1;
-		} else {
-			while (byte & 0x80) {
-				byte <<= 1;
-				byte_cursor++;
-			}
-		}
-	}
-	return byte_cursor;
 }
 
 int im_key_press(struct wlchewing_state *state, uint32_t key) {
@@ -114,23 +145,20 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 	}
 
 	if (state->bottom_panel) {
-		bool need_update = false;
 		switch (keysym) {
 		case XKB_KEY_Return:
 		case XKB_KEY_KP_Enter:
-			need_update = commit_bottom_panel(state, 0);
+			im_commit_candidate(state, 0);
 			break;
 		case XKB_KEY_1 ... XKB_KEY_9:
-			need_update = commit_bottom_panel(state,
-					keysym - XKB_KEY_1);
+			im_commit_candidate(state, keysym - XKB_KEY_1);
 			break;
 		case XKB_KEY_KP_1 ... XKB_KEY_KP_9:
-			need_update = commit_bottom_panel(state,
-					keysym - XKB_KEY_KP_1);
+			im_commit_candidate(state, keysym - XKB_KEY_KP_1);
 			break;
 		case XKB_KEY_0:
 		case XKB_KEY_KP_0:
-			need_update = commit_bottom_panel(state, 9);
+			im_commit_candidate(state, 9);
 			break;
 		case XKB_KEY_Left:
 		case XKB_KEY_KP_Left:
@@ -161,92 +189,68 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 			// no-op
 			break;
 		}
-		if (!need_update) {
-			// We grabs all the keys when panel is there,
-			// as if it has the focus.
-			return KEY_HANDLE_ARM_TIMER;
-		}
-	} else {
-		bool handled = true;
-		switch (keysym) {
-		case XKB_KEY_BackSpace:
-			chewing_handle_Backspace(state->chewing);
-			break;
-		case XKB_KEY_Delete:
-		case XKB_KEY_KP_Delete:
-			chewing_handle_Del(state->chewing);
-			break;
-		case XKB_KEY_Return:
-		case XKB_KEY_KP_Enter:
-			chewing_handle_Enter(state->chewing);
-			break;
-		case XKB_KEY_Left:
-		case XKB_KEY_KP_Left:
-			chewing_handle_Left(state->chewing);
-			break;
-		case XKB_KEY_Right:
-		case XKB_KEY_KP_Right:
-			chewing_handle_Right(state->chewing);
-			break;
-		case XKB_KEY_Home:
-			chewing_handle_Home(state->chewing);
-			break;
-		case XKB_KEY_End:
-			chewing_handle_End(state->chewing);
-			break;
-		case XKB_KEY_Down:
-		case XKB_KEY_KP_Down:
-			chewing_cand_open(state->chewing);
-			if (chewing_cand_TotalChoice(state->chewing)) {
-				state->bottom_panel = bottom_panel_new(state);
-				bottom_panel_render(state);
-				wl_display_roundtrip(state->display);
-				return KEY_HANDLE_ARM_TIMER;
-			}
-			handled = false;
-			break;
-		case XKB_KEY_Up:
-		case XKB_KEY_KP_Up:
-			// consume if dirty
-			handled = chewing_buffer_Check(state->chewing) ||
-				chewing_bopomofo_Check(state->chewing);
-			break;
-		default:
-			// printable characters
-			if (keysym >= XKB_KEY_space &&
-					keysym <= XKB_KEY_asciitilde) {
-				chewing_handle_Default(state->chewing,
-					(char)xkb_keysym_to_utf32(keysym));
-			}
-		}
-		if (!handled || chewing_keystroke_CheckIgnore(state->chewing)) {
-			return KEY_HANDLE_FORWARD;
-		}
+		// We grabs all the keys when panel is there,
+		// as if it has the focus.
+		return KEY_HANDLE_ARM_TIMER;
 	}
 
-	const char *precommit = chewing_buffer_String_static(state->chewing);
-	const char *bopomofo = chewing_bopomofo_String_static(state->chewing);
-	int cursor = count_utf8_bytes(precommit,
-		chewing_cursor_Current(state->chewing));
-	char *preedit = xcalloc(strlen(precommit) + strlen(bopomofo) + 1,
-		sizeof(char));
-	strncat(preedit, precommit, cursor);
-	strcat(preedit, bopomofo);
-	strcat(preedit, &precommit[cursor]);
-	bool need_hack = strlen(preedit) == 0;
-	zwp_input_method_v2_set_preedit_string(state->input_method, preedit,
-		cursor, cursor + strlen(bopomofo));
-	free(preedit);
-	if (chewing_commit_Check(state->chewing)) {
-		zwp_input_method_v2_commit_string(state->input_method, 
-			chewing_commit_String_static(state->chewing));
-		chewing_ack(state->chewing);
+	bool handled = true;
+	switch (keysym) {
+	case XKB_KEY_BackSpace:
+		chewing_handle_Backspace(state->chewing);
+		break;
+	case XKB_KEY_Delete:
+	case XKB_KEY_KP_Delete:
+		chewing_handle_Del(state->chewing);
+		break;
+	case XKB_KEY_Return:
+	case XKB_KEY_KP_Enter:
+		chewing_handle_Enter(state->chewing);
+		break;
+	case XKB_KEY_Left:
+	case XKB_KEY_KP_Left:
+		chewing_handle_Left(state->chewing);
+		break;
+	case XKB_KEY_Right:
+	case XKB_KEY_KP_Right:
+		chewing_handle_Right(state->chewing);
+		break;
+	case XKB_KEY_Home:
+		chewing_handle_Home(state->chewing);
+		break;
+	case XKB_KEY_End:
+		chewing_handle_End(state->chewing);
+		break;
+	case XKB_KEY_Down:
+	case XKB_KEY_KP_Down:
+		chewing_cand_open(state->chewing);
+		if (chewing_cand_TotalChoice(state->chewing)) {
+			state->bottom_panel = bottom_panel_new(state);
+			bottom_panel_render(state);
+			wl_display_roundtrip(state->display);
+			return KEY_HANDLE_ARM_TIMER;
+		}
+		handled = false;
+		break;
+	case XKB_KEY_Up:
+	case XKB_KEY_KP_Up:
+		// consume if dirty
+		handled = chewing_buffer_Check(state->chewing) ||
+			chewing_bopomofo_Check(state->chewing);
+		break;
+	default:
+		// printable characters
+		if (keysym >= XKB_KEY_space &&
+				keysym <= XKB_KEY_asciitilde) {
+			chewing_handle_Default(state->chewing,
+				(char)xkb_keysym_to_utf32(keysym));
+		}
 	}
-	zwp_input_method_v2_commit(state->input_method, state->serial);
-	wl_display_roundtrip(state->display);
-	if (need_hack) {
-		vte_hack(state);
+	if (!handled || chewing_keystroke_CheckIgnore(state->chewing)) {
+		return KEY_HANDLE_FORWARD;
 	}
+
+	im_update(state);
 	return KEY_HANDLE_ARM_TIMER;
 }
 

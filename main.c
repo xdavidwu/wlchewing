@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <linux/input-event-codes.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -100,17 +101,25 @@ static void pointer_axis_discrete(void *data, struct wl_pointer *wl_pointer,
 	im_candidates_move_by(data, discrete);
 }
 
+static void pointer_button(void *data, struct wl_pointer *wl_pointer,
+		uint32_t serial, uint32_t time, uint32_t button, uint32_t state) {
+	if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
+		if (button == BTN_MIDDLE || button == BTN_RIGHT) {
+			im_commit_candidate(data, 0);
+		}
+	}
+}
+
 static const struct wl_pointer_listener pointer_listener = {
 	.enter	= (typeof(pointer_listener.enter))noop,
 	.leave	= (typeof(pointer_listener.leave))noop,
 	.motion	= (typeof(pointer_listener.motion))noop,
-	.button	= (typeof(pointer_listener.button))noop,
+	.button	= pointer_button,
 	.axis	= (typeof(pointer_listener.axis))noop, // TODO touchpad
 	.frame	= (typeof(pointer_listener.frame))noop,
 	.axis_source	= (typeof(pointer_listener.axis_source))noop,
 	.axis_stop	= (typeof(pointer_listener.axis_stop))noop,
-	.axis_discrete	= pointer_axis_discrete, // TODO
-
+	.axis_discrete	= pointer_axis_discrete,
 };
 
 static void seat_capabilities(void *data, struct wl_seat *seat, uint32_t capabilities) {
