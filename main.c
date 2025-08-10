@@ -1,12 +1,14 @@
 #include <assert.h>
 #include <linux/input-event-codes.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/epoll.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
 #include <wayland-client-protocol.h>
+#include <wayland-util.h>
 
 #include "bottom-panel.h"
 #include "sni.h"
@@ -98,7 +100,9 @@ static const struct wl_output_listener output_listener = {
 
 static void pointer_axis_discrete(void *data, struct wl_pointer *wl_pointer,
 		uint32_t axis, int32_t discrete) {
-	im_candidates_move_by(data, discrete);
+	struct wlchewing_state *state = data;
+	state->has_discrete = true;
+	im_candidates_move_by(state, discrete);
 }
 
 static void pointer_button(void *data, struct wl_pointer *wl_pointer,
@@ -110,15 +114,72 @@ static void pointer_button(void *data, struct wl_pointer *wl_pointer,
 	}
 }
 
+static void pointer_axis(void *data, struct wl_pointer *wl_pointer,
+		uint32_t time, uint32_t axis, wl_fixed_t value) {
+	if (axis < 2) {
+		struct wlchewing_state *state = data;
+		state->pending_axis[axis] = value;
+	}
+}
+
+static double pixels_per_detent = 15;
+
+// deal with the frame for continuous sources
+// treat unknown (unreported) as continuous (but still with discrete check)
+// perhaps we should also check for value120?
+static void pointer_frame(void *data, struct wl_pointer *wl_pointer) {
+	struct wlchewing_state *state = data;
+	if (!state->has_discrete &&
+			state->pending_source != WL_POINTER_AXIS_SOURCE_WHEEL &&
+			state->pending_source != WL_POINTER_AXIS_SOURCE_WHEEL_TILT) {
+		if (state->acc_source == state->pending_source) {
+			state->acc_axis[0] +=
+				wl_fixed_to_double(state->pending_axis[0]);
+			state->acc_axis[1] +=
+				wl_fixed_to_double(state->pending_axis[1]);
+		} else {
+			state->acc_axis[0] =
+				wl_fixed_to_double(state->pending_axis[0]);
+			state->acc_axis[1] =
+				wl_fixed_to_double(state->pending_axis[1]);
+			state->acc_source = state->pending_source;
+		}
+		int detents[2] = {
+			state->acc_axis[0] / pixels_per_detent,
+			state->acc_axis[1] / pixels_per_detent,
+		};
+		state->acc_axis[0] -= pixels_per_detent * detents[0];
+		state->acc_axis[1] -= pixels_per_detent * detents[1];
+		im_candidates_move_by(state, detents[0] + detents[1]);
+	}
+
+	state->pending_axis[WL_POINTER_AXIS_VERTICAL_SCROLL] = 0;
+	state->pending_axis[WL_POINTER_AXIS_HORIZONTAL_SCROLL] = 0;
+	state->pending_source = WL_POINTER_AXIS_SOURCE_CONTINUOUS;
+	state->has_discrete = false;
+}
+
+static void pointer_axis_stop(void *data, struct wl_pointer *wl_pointer, uint32_t time, uint32_t axis) {
+	if (axis < 2) {
+		struct wlchewing_state *state = data;
+		state->acc_axis[axis] = 0;
+	}
+}
+
+static void pointer_axis_source(void *data, struct wl_pointer *wl_pointer, uint32_t axis_source) {
+	struct wlchewing_state *state = data;
+	state->pending_source = axis_source;
+}
+
 static const struct wl_pointer_listener pointer_listener = {
 	.enter	= (typeof(pointer_listener.enter))noop,
 	.leave	= (typeof(pointer_listener.leave))noop,
 	.motion	= (typeof(pointer_listener.motion))noop,
 	.button	= pointer_button,
-	.axis	= (typeof(pointer_listener.axis))noop, // TODO touchpad
-	.frame	= (typeof(pointer_listener.frame))noop,
-	.axis_source	= (typeof(pointer_listener.axis_source))noop,
-	.axis_stop	= (typeof(pointer_listener.axis_stop))noop,
+	.axis	= pointer_axis,
+	.frame	= pointer_frame,
+	.axis_source	= pointer_axis_source,
+	.axis_stop	= pointer_axis_stop,
 	.axis_discrete	= pointer_axis_discrete,
 };
 

@@ -49,6 +49,11 @@ struct wlchewing_state {
 	struct zwp_virtual_keyboard_v1 *virtual_keyboard;
 
 	struct wl_pointer *pointer;
+	wl_fixed_t pending_axis[2];
+	uint32_t pending_source;
+	bool has_discrete;
+	double acc_axis[2];
+	uint32_t acc_source;
 
 	struct wlchewing_bottom_panel *bottom_panel;
 	PangoLayout *bottom_panel_text_layout;
