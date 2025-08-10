@@ -6,12 +6,11 @@
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 struct wlchewing_state;
-struct wlchewing_buffer;
 
 struct wlchewing_bottom_panel {
 	struct zwlr_layer_surface_v1 *layer_surface;
 	struct wl_surface *wl_surface;
-	struct wl_list *buffer_pool;
+	struct wlchewing_buffer_pool *buffer_pool;
 
 	uint32_t width, height;
 	int32_t scale;

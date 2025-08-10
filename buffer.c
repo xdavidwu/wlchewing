@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -30,10 +31,7 @@ static void mktempname(char *template) {
 struct wlchewing_buffer *buffer_new(struct wl_shm *shm,
 		uint32_t width, uint32_t height, uint32_t scale) {
 	struct wlchewing_buffer *buffer = xcalloc(1, sizeof(struct wlchewing_buffer));
-	buffer->width = width;
-	buffer->height = height;
-	buffer->scale = scale;
-	buffer->shm = shm;
+	buffer->available = true;
 
 	char *template = xstrdup("/wlchewing-XXXXXX");
 	mktempname(&template[11]);
@@ -58,7 +56,7 @@ struct wlchewing_buffer *buffer_new(struct wl_shm *shm,
 	buffer->data = mmap(NULL, buffer->size, PROT_READ | PROT_WRITE,
 		MAP_SHARED, fd, 0);
 	if (buffer->data == MAP_FAILED) {
-		wlchewing_err("Failed to mmap %ld", buffer->size);
+		wlchewing_perr("Failed to mmap %ld", buffer->size);
 		close(fd);
 		free(buffer);
 		return NULL;
@@ -87,39 +85,41 @@ void buffer_destroy(struct wlchewing_buffer *buffer) {
 	free(buffer);
 }
 
-struct wl_list *buffer_pool_new(struct wl_shm *shm,
+struct wlchewing_buffer_pool *buffer_pool_new(struct wl_shm *shm,
 		uint32_t width, uint32_t height, uint32_t scale) {
-	struct wl_list *pool = xcalloc(1, sizeof(struct wl_list));
-	wl_list_init(pool);
-	struct wlchewing_buffer *buffer = buffer_new(shm, width, height, scale);
-	buffer->available = true;
-	if (buffer == NULL) {
-		free(pool);
-		wlchewing_err("Failed to create first buffer for buffer pool");
-		return NULL;
-	}
-	wl_list_insert(pool, &buffer->link);
+	struct wlchewing_buffer_pool *pool = xcalloc(1, sizeof(struct wlchewing_buffer_pool));
+	pool->shm = shm;
+	pool->width = width;
+	pool->height = height;
+	pool->scale = scale;
+	wl_list_init(&pool->buffers);
 	return pool;
 }
 
-struct wlchewing_buffer *buffer_pool_get_buffer(struct wl_list *pool) {
-	struct wlchewing_buffer *cur_buffer, *last_buffer;
-	wl_list_for_each(cur_buffer, pool, link) {
+struct wlchewing_buffer *buffer_pool_get_buffer(struct wlchewing_buffer_pool *pool) {
+	struct wlchewing_buffer *cur_buffer, *last_buffer = NULL;
+	wl_list_for_each(cur_buffer, &pool->buffers, link) {
 		if (cur_buffer->available) {
 			cur_buffer->available = false;
 			return cur_buffer;
 		}
 		last_buffer = cur_buffer;
 	}
-	struct wlchewing_buffer *new_buffer = buffer_new(last_buffer->shm,
-		last_buffer->width, last_buffer->height, last_buffer->scale);
-	wl_list_insert(&last_buffer->link, &new_buffer->link);
+	struct wlchewing_buffer *new_buffer = buffer_new(pool->shm,
+		pool->width, pool->height, pool->scale);
+	if (new_buffer == NULL) {
+		free(pool);
+		wlchewing_err("Failed to create new buffer for buffer pool");
+		return NULL;
+	}
+	new_buffer->available = false;
+	wl_list_insert(last_buffer ? &last_buffer->link : &pool->buffers, &new_buffer->link);
 	return new_buffer;
 }
 
-void buffer_pool_destroy(struct wl_list *pool) {
+void buffer_pool_destroy(struct wlchewing_buffer_pool *pool) {
 	struct wlchewing_buffer *cur_buffer, *tmp;
-	wl_list_for_each_safe(cur_buffer, tmp, pool, link) {
+	wl_list_for_each_safe(cur_buffer, tmp, &pool->buffers, link) {
 		wl_list_remove(&cur_buffer->link);
 		buffer_destroy(cur_buffer);
 	}

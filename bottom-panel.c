@@ -75,7 +75,7 @@ static int render_cand(struct wlchewing_state *state,
 			state->config->selection_color[1],
 			state->config->selection_color[2],
 			state->config->selection_color[3]);
-		cairo_rectangle(buffer->cairo, 0, 0, width + cand_padding * 2, buffer->height);
+		cairo_rectangle(buffer->cairo, 0, 0, width + cand_padding * 2, state->bottom_panel->buffer_pool->height);
 		cairo_fill(buffer->cairo);
 	}
 
@@ -157,8 +157,8 @@ void bottom_panel_render(struct wlchewing_state *state) {
 	int total = chewing_cand_TotalChoice(state->chewing);
 	assert(state->bottom_panel->selected_index < total);
 
-	struct wlchewing_buffer *buffer = buffer_pool_get_buffer(
-		state->bottom_panel->buffer_pool);
+	struct wlchewing_buffer_pool *pool = state->bottom_panel->buffer_pool;
+	struct wlchewing_buffer *buffer = buffer_pool_get_buffer(pool);
 	cairo_t *cairo = buffer->cairo;
 	cairo_save(cairo);
 	cairo_set_source_rgba(cairo, state->config->background_color[0],
@@ -181,6 +181,6 @@ void bottom_panel_render(struct wlchewing_state *state) {
 	cairo_restore(cairo);
 	wl_surface_attach(state->bottom_panel->wl_surface, buffer->wl_buffer, 0, 0);
 	wl_surface_damage_buffer(state->bottom_panel->wl_surface, 0, 0,
-		buffer->width * buffer->scale, buffer->height * buffer->scale);
+		pool->width * pool->scale, pool->height * pool->scale);
 	wl_surface_commit(state->bottom_panel->wl_surface);
 }
