@@ -1,8 +1,6 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include <stdbool.h>
-
 enum dock_option {
 	DOCK_NO = 0,
 	DOCK_YEILD,

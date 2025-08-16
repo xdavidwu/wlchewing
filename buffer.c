@@ -1,7 +1,6 @@
 #define _GNU_SOURCE // memfd
 
 #include <fcntl.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/stat.h>

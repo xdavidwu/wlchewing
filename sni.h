@@ -1,7 +1,6 @@
 #ifndef SNI_H
 #define SNI_H
 
-#include <stdbool.h>
 #include <stdint.h>
 #include <systemd/sd-bus.h>
 

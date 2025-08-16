@@ -1,4 +1,3 @@
-#include <stdbool.h>
 #include <sys/mman.h>
 #include <sys/timerfd.h>
 #include <unistd.h>

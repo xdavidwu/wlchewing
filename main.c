@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <linux/input-event-codes.h>
 #include <signal.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <sys/epoll.h>
 #include <sys/timerfd.h>

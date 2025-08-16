@@ -3,7 +3,6 @@
 
 #include <chewing.h>
 #include <errno.h> // usage in macro
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h> // usage in macro
