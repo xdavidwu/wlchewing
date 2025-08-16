@@ -81,7 +81,13 @@ struct wlchewing_state {
 void im_setup(struct wlchewing_state *state);
 void im_destory(struct wlchewing_state *state);
 
-int im_key_press(struct wlchewing_state *state, uint32_t key);
+enum press_action {
+	PRESS_CONSUME,
+	PRESS_FORWARD,
+	PRESS_ARM_TIMER,
+};
+
+enum press_action im_key_press(struct wlchewing_state *state, uint32_t key);
 void im_release_all_keys(struct wlchewing_state *state);
 
 void im_candidates_move_by(struct wlchewing_state *state, int diff);
@@ -94,8 +100,5 @@ void im_commit_candidate(struct wlchewing_state *state, int offset);
 #define _wlchewing_errloc(fmt, ...) fprintf(stderr, "[%s:%d] " fmt "\n", ##__VA_ARGS__)
 #define wlchewing_err(fmt, ...) _wlchewing_errloc(fmt, __FILE__, __LINE__, ##__VA_ARGS__)
 #define wlchewing_perr(fmt, ...) wlchewing_err(fmt ": %s", ##__VA_ARGS__, strerror(errno))
-
-#define KEY_HANDLE_FORWARD	(1 << 0)
-#define KEY_HANDLE_ARM_TIMER	(1 << 1)
 
 #endif

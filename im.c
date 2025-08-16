@@ -94,7 +94,7 @@ void im_candidates_move_by(struct wlchewing_state *state, int diff) {
 	}
 }
 
-int im_key_press(struct wlchewing_state *state, uint32_t key) {
+enum press_action im_key_press(struct wlchewing_state *state, uint32_t key) {
 	xkb_keysym_t keysym = xkb_state_key_get_one_sym(state->xkb_state,
 		key + 8);
 
@@ -116,16 +116,16 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 				state->serial);
 			wl_display_roundtrip(state->display);
 			vte_hack(state);
-			return KEY_HANDLE_ARM_TIMER;
+			return PRESS_ARM_TIMER;
 		}
-		return KEY_HANDLE_FORWARD;
+		return PRESS_FORWARD;
 	}
 	if (xkb_state_mod_name_is_active(state->xkb_state, XKB_MOD_NAME_ALT,
 			XKB_STATE_MODS_EFFECTIVE) > 0 ||
 			xkb_state_mod_name_is_active(state->xkb_state,
 			XKB_MOD_NAME_LOGO, XKB_STATE_MODS_EFFECTIVE) > 0) {
 		// Alt and Logo are not used by us
-		return KEY_HANDLE_FORWARD;
+		return PRESS_FORWARD;
 	}
 
 	state->shift_only = keysym == XKB_KEY_Shift_L ||
@@ -135,9 +135,9 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 	 * state used to check whether only shift is pressed.
 	 */
 	if (state->shift_only) {
-		return 0;
+		return PRESS_CONSUME;
 	} else if (state->forwarding) {
-		return KEY_HANDLE_FORWARD;
+		return PRESS_FORWARD;
 	}
 
 	if (state->bottom_panel) {
@@ -187,7 +187,7 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 		}
 		// We grabs all the keys when panel is there,
 		// as if it has the focus.
-		return KEY_HANDLE_ARM_TIMER;
+		return PRESS_ARM_TIMER;
 	}
 
 	bool handled = true;
@@ -224,7 +224,7 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 			state->bottom_panel = bottom_panel_new(state);
 			bottom_panel_render(state);
 			wl_display_roundtrip(state->display);
-			return KEY_HANDLE_ARM_TIMER;
+			return PRESS_ARM_TIMER;
 		}
 		handled = false;
 		break;
@@ -243,11 +243,11 @@ int im_key_press(struct wlchewing_state *state, uint32_t key) {
 		}
 	}
 	if (!handled || chewing_keystroke_CheckIgnore(state->chewing)) {
-		return KEY_HANDLE_FORWARD;
+		return PRESS_FORWARD;
 	}
 
 	im_update(state);
-	return KEY_HANDLE_ARM_TIMER;
+	return PRESS_ARM_TIMER;
 }
 
 static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
@@ -255,14 +255,14 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 		uint32_t time, uint32_t key, uint32_t key_state) {
 	struct wlchewing_state *state = data;
 	if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-		int handle_action = im_key_press(state, key);
-		if (handle_action & KEY_HANDLE_FORWARD) {
+		struct wlchewing_keysym *newkey;
+		switch (im_key_press(state, key)) {
+		case PRESS_FORWARD:
 			zwp_virtual_keyboard_v1_key(state->virtual_keyboard,
 				time, key, key_state);
 			// record press sent keys,
 			// to pop pending release on deactivate
-			struct wlchewing_keysym *newkey = xcalloc(1,
-				sizeof(struct wlchewing_keysym));
+			newkey = xcalloc(1, sizeof(struct wlchewing_keysym));
 			newkey->key = key;
 			wl_list_insert(&state->press_sent_keysyms,
 				&newkey->link);
@@ -270,11 +270,10 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 			// accurate when we pop pending release
 			state->millis_offset = get_millis() - time;
 			wl_display_roundtrip(state->display);
-		}
-		if (handle_action & KEY_HANDLE_ARM_TIMER) {
+			break;
+		case PRESS_ARM_TIMER:
 			// record that we should not forward key release
-			struct wlchewing_keysym *newkey = xcalloc(1,
-				sizeof(struct wlchewing_keysym));
+			newkey = xcalloc(1, sizeof(struct wlchewing_keysym));
 			newkey->key = key;
 			wl_list_insert(&state->pending_handled_keysyms,
 				&newkey->link);
@@ -285,6 +284,8 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 					wlchewing_perr("Failed to arm timer");
 				}
 			}
+			break;
+		case PRESS_CONSUME:
 		}
 	} else if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
 		xkb_keysym_t keysym = xkb_state_key_get_one_sym(
