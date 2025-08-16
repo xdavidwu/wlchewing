@@ -3,7 +3,6 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <sys/epoll.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
@@ -11,6 +10,7 @@
 #include <wayland-util.h>
 
 #include "bottom-panel.h"
+#include "errors.h"
 #include "sni.h"
 #include "wlchewing.h"
 #include "xmem.h"
@@ -198,21 +198,6 @@ static const struct wl_seat_listener seat_listener = {
 	.capabilities	= seat_capabilities,
 	.name		= (typeof(seat_listener.name))noop,
 };
-
-static inline int must_errno(int ret, const char *op) {
-	if (ret < 0) {
-		wlchewing_perr("Failed to %s", op);
-		exit(EXIT_FAILURE);
-	}
-	return ret;
-}
-
-static inline int errnoify(int ret) {
-	if (ret < 0) {
-		errno = -ret;
-	}
-	return ret;
-}
 
 int main(int argc, char *argv[]) {
 	struct wlchewing_state *state = &global_state;

@@ -1,5 +1,6 @@
 #include <unistd.h>
 
+#include "errors.h"
 #include "sni.h"
 #include "wlchewing.h"
 #include "xmem.h"
@@ -21,13 +22,6 @@ static const sd_bus_vtable service_vtable[] = {
 	SD_BUS_SIGNAL("NewIcon", "", 0),
 	SD_BUS_VTABLE_END
 };
-
-static inline int errnoify(int ret) {
-	if (ret < 0) {
-		errno = -ret;
-	}
-	return ret;
-}
 
 static int handle_owner_changed(sd_bus_message *m, void *userdata,
 		sd_bus_error *ret_error) {
