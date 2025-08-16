@@ -44,7 +44,6 @@ sources = [
   'im.c',
   'main.c',
   'sni.c',
-  'xmem.c',
 ]
 
 executable('wlchewing', sources,
