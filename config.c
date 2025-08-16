@@ -47,24 +47,19 @@ Usage: %s [OPTIONS]...\n\
 \n\
 COLOR is color specified as either #RRGGBB or #RRGGBBAA.\n";
 
+static struct wlchewing_config defaults = {
+	.text_color		= {1.0, 1.0, 1.0, 1.0},
+	.selection_text_color	= {1.0, 1.0, 1.0, 1.0},
+	.background_color	= {0.0, 0.0, 0.0, 1.0},
+	.selection_color	= {0.25, 0.25, 0.25, 1.0},
+	.tray_icon		= true,
+	.key_hint		= true,
+};
+
 struct wlchewing_config *config_new() {
 	struct wlchewing_config *config = xcalloc(1,
 		sizeof(struct wlchewing_config));
-	config->text_color[0] = 1.0;
-	config->text_color[1] = 1.0;
-	config->text_color[2] = 1.0;
-	config->text_color[3] = 1.0;
-	config->selection_text_color[0] = 1.0;
-	config->selection_text_color[1] = 1.0;
-	config->selection_text_color[2] = 1.0;
-	config->selection_text_color[3] = 1.0;
-	config->background_color[3] = 1.0;
-	config->selection_color[0] = 0.25;
-	config->selection_color[1] = 0.25;
-	config->selection_color[2] = 0.25;
-	config->selection_color[3] = 1.0;
-	config->tray_icon = true;
-	config->key_hint = true;
+	*config = defaults;
 	return config;
 }
 
