@@ -21,7 +21,7 @@ static const struct option long_options[] = {
 	{0},
 };
 
-static const char help[] = "\
+static constexpr char help[] = "\
 Usage: %s [OPTIONS]...\n\
 \n\
   -e, --start-with-english      Start with English mode\n\
@@ -46,7 +46,7 @@ Usage: %s [OPTIONS]...\n\
 \n\
 COLOR is color specified as either #RRGGBB or #RRGGBBAA.\n";
 
-static struct wlchewing_config defaults = {
+static constexpr struct wlchewing_config defaults = {
 	.text_color		= {1.0, 1.0, 1.0, 1.0},
 	.selection_text_color	= {1.0, 1.0, 1.0, 1.0},
 	.background_color	= {0.0, 0.0, 0.0, 1.0},

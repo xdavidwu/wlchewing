@@ -52,7 +52,7 @@ static void bottom_panel_configure(struct wlchewing_state *state,
 	wl_surface_set_buffer_scale(panel->wl_surface, panel->scale);
 }
 
-static const int cand_padding = 4;
+static constexpr int cand_padding = 4;
 
 static int render_cand(struct wlchewing_state *state,
 		struct wlchewing_buffer *buffer, const char *text, int index) {
