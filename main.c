@@ -76,10 +76,6 @@ static void handle_global(void *data, struct wl_registry *registry,
 	}
 }
 
-static void noop() {
-	// no-op
-}
-
 static const struct wl_registry_listener registry_listener = {
 	.global = handle_global,
 	.global_remove = (typeof(registry_listener.global_remove))noop,

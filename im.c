@@ -14,10 +14,6 @@ static int32_t get_millis() {
 	return spec.tv_sec * 1000 + spec.tv_nsec / (1000 * 1000);
 }
 
-static void noop() {
-	// no-op
-}
-
 static void vte_hack(struct wlchewing_state *state);
 
 static int count_utf8_bytes(const char *s, int codepoints) {

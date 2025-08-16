@@ -7,10 +7,6 @@
 #include "wlchewing.h"
 #include "xmem.h"
 
-static void noop() {
-	// no-op
-}
-
 static void layer_surface_configure(void *data,
 		struct zwlr_layer_surface_v1 *wlr_layer_surface,
 		uint32_t serial, uint32_t w, uint32_t h) {

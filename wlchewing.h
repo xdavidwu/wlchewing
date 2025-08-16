@@ -87,6 +87,10 @@ void im_release_all_keys(struct wlchewing_state *state);
 void im_candidates_move_by(struct wlchewing_state *state, int diff);
 void im_commit_candidate(struct wlchewing_state *state, int offset);
 
+[[maybe_unused]] static void noop() {
+	// no-op for wayland listeners
+}
+
 #define _wlchewing_errloc(fmt, ...) fprintf(stderr, "[%s:%d] " fmt "\n", ##__VA_ARGS__)
 #define wlchewing_err(fmt, ...) _wlchewing_errloc(fmt, __FILE__, __LINE__, ##__VA_ARGS__)
 #define wlchewing_perr(fmt, ...) wlchewing_err(fmt ": %s", ##__VA_ARGS__, strerror(errno))
