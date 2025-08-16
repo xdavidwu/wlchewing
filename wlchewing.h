@@ -97,8 +97,8 @@ void im_commit_candidate(struct wlchewing_state *state, int offset);
 	// no-op for wayland listeners
 }
 
-#define _wlchewing_errloc(fmt, ...) fprintf(stderr, "[%s:%d] " fmt "\n", ##__VA_ARGS__)
-#define wlchewing_err(fmt, ...) _wlchewing_errloc(fmt, __FILE__, __LINE__, ##__VA_ARGS__)
-#define wlchewing_perr(fmt, ...) wlchewing_err(fmt ": %s", ##__VA_ARGS__, strerror(errno))
+#define _wlchewing_errloc(fmt, ...) fprintf(stderr, "[%s:%d] " fmt "\n" __VA_OPT__(,) __VA_ARGS__)
+#define wlchewing_err(fmt, ...) _wlchewing_errloc(fmt, __FILE__, __LINE__ __VA_OPT__(,) __VA_ARGS__)
+#define wlchewing_perr(fmt, ...) wlchewing_err(fmt ": %s" __VA_OPT__(,) __VA_ARGS__, strerror(errno))
 
 #endif

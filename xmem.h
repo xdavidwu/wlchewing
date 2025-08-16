@@ -6,8 +6,8 @@
 
 #include "wlchewing.h"
 
-#define xcalloc(...) _xcalloc(__FILE__, __LINE__, ##__VA_ARGS__)
-#define xstrdup(...) _xstrdup(__FILE__, __LINE__, ##__VA_ARGS__)
+#define xcalloc(...) _xcalloc(__FILE__, __LINE__ __VA_OPT__(,) __VA_ARGS__)
+#define xstrdup(...) _xstrdup(__FILE__, __LINE__ __VA_OPT__(,) __VA_ARGS__)
 
 static inline void *assert_pointer(const char *f, int l, const char *op, void *p) {
 	if (p == NULL) {
