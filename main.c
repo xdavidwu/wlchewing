@@ -22,7 +22,7 @@ struct global_map_el {
 	void **dest;
 } globals[] = {
 	{
-		&wl_compositor_interface, 4,
+		&wl_compositor_interface, 6,
 		(void **)&global_state.wl_globals.compositor,
 	},
 	{
@@ -80,19 +80,9 @@ static const struct wl_registry_listener registry_listener = {
 	.global_remove = (typeof(registry_listener.global_remove))noop,
 };
 
-static void output_scale(void *data, struct wl_output *output, int32_t scale) {
-	if (data != NULL) {
-		free(data);
-	}
-
-	int32_t *user_data = xcalloc(1, sizeof(int32_t));
-	*user_data = scale;
-	wl_output_set_user_data(output, user_data);
-}
-
 static const struct wl_output_listener output_listener = {
-	.scale		= output_scale,
-	.geometry	= (typeof(output_listener.geometry))noop,
+	.scale		= (typeof(output_listener.scale))noop,
+	.geometry	= (typeof(output_listener.geometry))noop, // TODO subpixel
 	.mode		= (typeof(output_listener.mode))noop,
 	.done		= (typeof(output_listener.done))noop
 };

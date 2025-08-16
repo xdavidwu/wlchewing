@@ -26,19 +26,27 @@ static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
 	.closed		= layer_surface_closed,
 };
 
-static void surface_enter(void *data, struct wl_surface *wl_surface,
-		struct wl_output *output) {
+static void surface_preferred_buffer_scale(void *data,
+		struct wl_surface *wl_surface, int32_t scale) {
 	struct wlchewing_bottom_panel *panel = data;
-	panel->scale = *((int32_t *)wl_output_get_user_data(output));
+	panel->scale = scale;
 }
 
 static const struct wl_surface_listener surface_listener = {
-	.enter	= surface_enter,
-	.leave	= (typeof(surface_listener.leave))noop,
+	.enter			= (typeof(surface_listener.enter))noop,
+	.leave			= (typeof(surface_listener.leave))noop,
+	.preferred_buffer_scale	= surface_preferred_buffer_scale,
+	.preferred_buffer_transform =
+		(typeof(surface_listener.preferred_buffer_transform))noop,
 };
 
+// XXX sway do send configure and preferred_buffer_scale before enter now
+// maybe we should ditch the test buffer approach,
+// and check if a re-render is needed after first frame,
+// or just let first frame be possibly imperfect on other compositors,
+// and see how that goes
 static void bottom_panel_configure(struct wlchewing_state *state,
-		struct wlchewing_bottom_panel *panel){
+		struct wlchewing_bottom_panel *panel) {
 	wl_surface_attach(panel->wl_surface,
 		state->bottom_panel_test_buffer->wl_buffer, 0, 0);
 	zwlr_layer_surface_v1_set_size(panel->layer_surface, 0, panel->height);
