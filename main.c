@@ -56,9 +56,12 @@ static void handle_signal(int signo) {
 
 static const struct wl_output_listener output_listener;
 
+static const struct wl_seat_listener seat_listener;
+
 static void handle_global(void *data, struct wl_registry *registry,
 		uint32_t name, const char *interface, uint32_t version) {
 	struct global_map_el *el = globals;
+	struct wlchewing_state *state = data;
 	while (el->interface != NULL) {
 		if (strcmp(interface, el->interface->name) == 0) {
 			*el->dest = wl_registry_bind(
@@ -72,6 +75,19 @@ static void handle_global(void *data, struct wl_registry *registry,
 		struct wl_output *output = wl_registry_bind(registry, name,
 			&wl_output_interface, 3);
 		wl_output_add_listener(output, &output_listener, NULL);
+	} else if (strcmp(interface, wl_seat_interface.name) == 0) { // v5
+		struct wl_seat *seat = wl_registry_bind(registry, name,
+			&wl_seat_interface, 5);
+		wl_seat_add_listener(seat, &seat_listener, state);
+		if (!state->config->seat) {
+			if (state->wl_globals.seat) {
+				wl_seat_destroy(state->wl_globals.seat);
+			}
+			state->wl_globals.seat = seat;
+		} else {
+			// get name event for seat selection
+			wl_display_roundtrip(state->display);
+		}
 	}
 }
 
@@ -183,9 +199,19 @@ static void seat_capabilities(void *data, struct wl_seat *seat, uint32_t capabil
 	}
 }
 
+static void seat_name(void *data, struct wl_seat *seat, const char *name) {
+	struct wlchewing_state *state = data;
+	if (state->config->seat && strcmp(name, state->config->seat) == 0) {
+		if (state->wl_globals.seat) {
+			wl_seat_destroy(state->wl_globals.seat);
+		}
+		state->wl_globals.seat = seat;
+	}
+}
+
 static const struct wl_seat_listener seat_listener = {
 	.capabilities	= seat_capabilities,
-	.name		= (typeof(seat_listener.name))noop,
+	.name		= seat_name,
 };
 
 int main(int argc, char *argv[]) {
@@ -213,9 +239,10 @@ int main(int argc, char *argv[]) {
 		}
 		el++;
 	}
-
-	wl_seat_add_listener(state->wl_globals.seat, &seat_listener, state);
-	wl_display_roundtrip(state->display);
+	if (!state->wl_globals.seat) {
+		wlchewing_err("No seat found");
+		return EXIT_FAILURE;
+	}
 
 	int epoll_fd = must_errno(epoll_create1(EPOLL_CLOEXEC), "setup epoll");
 
