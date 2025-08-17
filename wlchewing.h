@@ -38,6 +38,7 @@ struct wlchewing_state {
 
 	struct wl_display *display;
 	struct wlchewing_wl_globals wl_globals;
+	uint32_t seat_name;
 
 	struct zwp_input_method_v2 *input_method;
 	struct zwp_input_method_keyboard_grab_v2 *kb_grab;

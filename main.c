@@ -30,10 +30,6 @@ struct global_map_el {
 		(void **)&global_state.wl_globals.shm,
 	},
 	{
-		&wl_seat_interface, 5,
-		(void **)&global_state.wl_globals.seat,
-	},
-	{
 		&zwp_input_method_manager_v2_interface, 1,
 		(void **)&global_state.wl_globals.input_method_manager,
 	},
@@ -56,9 +52,22 @@ static void handle_signal(int signo) {
 
 static const struct wl_output_listener output_listener;
 
+static void seat_name(void *data, struct wl_seat *seat, const char *name) {
+	if (strcmp(name, global_state.config->seat) == 0) {
+		global_state.seat_name = (uintptr_t)data;
+	}
+	wl_seat_destroy(seat);
+}
+
+static const struct wl_seat_listener seat_listener_selection = {
+	.capabilities	= (typeof(seat_listener_selection.capabilities))noop,
+	.name		= seat_name,
+};
+
 static void handle_global(void *data, struct wl_registry *registry,
 		uint32_t name, const char *interface, uint32_t version) {
 	struct global_map_el *el = globals;
+	struct wlchewing_state *state = data;
 	while (el->interface != NULL) {
 		if (strcmp(interface, el->interface->name) == 0) {
 			*el->dest = wl_registry_bind(
@@ -72,6 +81,17 @@ static void handle_global(void *data, struct wl_registry *registry,
 		struct wl_output *output = wl_registry_bind(registry, name,
 			&wl_output_interface, 3);
 		wl_output_add_listener(output, &output_listener, NULL);
+	} else if (strcmp(interface, wl_seat_interface.name) == 0) { // v5
+		if (!state->config->seat) {
+			state->seat_name = name;
+		} else {
+			// get name event for seat selection
+			struct wl_seat *seat = wl_registry_bind(registry, name,
+				&wl_seat_interface, 5);
+			static_assert(sizeof(void *) >= sizeof(name));
+			wl_seat_add_listener(seat, &seat_listener_selection, (void *)(uintptr_t)name);
+			wl_display_roundtrip(state->display);
+		}
 	}
 }
 
@@ -201,6 +221,7 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
+	state->seat_name = UINT32_MAX;
 	struct wl_registry *registry = wl_display_get_registry(state->display);
 	wl_registry_add_listener(registry, &registry_listener, state);
 	wl_display_roundtrip(state->display);
@@ -213,9 +234,17 @@ int main(int argc, char *argv[]) {
 		}
 		el++;
 	}
+	if (state->seat_name == UINT32_MAX) {
+		if (!state->config->seat) {
+			wlchewing_err("No seat found");
+		} else {
+			wlchewing_err("Seat %s not found", state->config->seat);
+		}
+		return EXIT_FAILURE;
+	}
 
+	state->wl_globals.seat = wl_registry_bind(registry, state->seat_name, &wl_seat_interface, 5);
 	wl_seat_add_listener(state->wl_globals.seat, &seat_listener, state);
-	wl_display_roundtrip(state->display);
 
 	int epoll_fd = must_errno(epoll_create1(EPOLL_CLOEXEC), "setup epoll");
 

@@ -18,6 +18,7 @@ static const struct option long_options[] = {
 	{"no-tray-icon",	no_argument,		NULL,	'n'},
 	{"force-default-keymap",no_argument,		NULL,	1},
 	{"no-num-key-hint",	no_argument,		NULL,	2},
+	{"seat",		required_argument,	NULL,	3},
 	{0},
 };
 
@@ -25,7 +26,7 @@ static constexpr char help[] = "\
 Usage: %s [OPTIONS]...\n\
 \n\
   -e, --start-with-english      Start with English mode\n\
-  -d, --dock=(dock|yield|no)    Set candidate panel behavior, default to dock\n\
+  -d, --dock=(dock|yield|no)    Set candidate panel behavior, defaults to dock\n\
                                   dock  Configure as a dock\n\
                                         Do not overlap with any surfaces\n\
                                   yield Yield to existing dock surface\n\
@@ -43,6 +44,7 @@ Usage: %s [OPTIONS]...\n\
                                 Set candidate panel selection text color\n\
   -n, --no-tray-icon            Disable tray icon\n\
       --no-num-key-hint         Disable number key display on candidate panel\n\
+      --seat=SEAT               Select seat, defaults to last announced seat\n\
 \n\
 COLOR is color specified as either #RRGGBB or #RRGGBBAA.\n";
 
@@ -131,6 +133,9 @@ int config_read_opts(int argc, char *argv[], struct wlchewing_config *config) {
 			break;
 		case 2:
 			config->key_hint = false;
+			break;
+		case 3:
+			config->seat = optarg;
 			break;
 		}
 	}

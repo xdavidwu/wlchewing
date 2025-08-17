@@ -10,6 +10,7 @@ enum dock_option {
 struct wlchewing_config {
 	enum dock_option dock;
 	const char *font;
+	const char *seat;
 	double text_color[4];
 	double background_color[4];
 	double selection_color[4];
