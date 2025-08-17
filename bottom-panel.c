@@ -40,26 +40,6 @@ static const struct wl_surface_listener surface_listener = {
 		(typeof(surface_listener.preferred_buffer_transform))noop,
 };
 
-// XXX sway do send configure and preferred_buffer_scale before enter now
-// maybe we should ditch the test buffer approach,
-// and check if a re-render is needed after first frame,
-// or just let first frame be possibly imperfect on other compositors,
-// and see how that goes
-static void bottom_panel_configure(struct wlchewing_state *state,
-		struct wlchewing_bottom_panel *panel) {
-	wl_surface_attach(panel->wl_surface,
-		state->bottom_panel_test_buffer->wl_buffer, 0, 0);
-	zwlr_layer_surface_v1_set_size(panel->layer_surface, 0, panel->height);
-
-	zwlr_layer_surface_v1_set_exclusive_zone(panel->layer_surface,
-		state->config->dock == DOCK_DOCK ? panel->height :
-		state->config->dock == DOCK_YEILD ? 0 : -1);
-
-	wl_surface_commit(panel->wl_surface);
-	wl_display_roundtrip(state->display);
-	wl_surface_set_buffer_scale(panel->wl_surface, panel->scale);
-}
-
 static constexpr int cand_padding = 4;
 
 static int render_cand(struct wlchewing_state *state,
@@ -143,13 +123,27 @@ struct wlchewing_bottom_panel *bottom_panel_new(struct wlchewing_state *state) {
 		ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
 	zwlr_layer_surface_v1_set_size(panel->layer_surface, 0, panel->height);
 	wl_surface_commit(panel->wl_surface);
+	// obtain width (and probably height) via layer_surface configure
 	wl_display_roundtrip(state->display);
 
-	// set height, get/set width and scale
-	bottom_panel_configure(state, panel);
+	// get scale via wl_surface preferred_buffer_scale
+	// XXX sway do send preferred_buffer_scale before enter now
+	// maybe we should ditch the test buffer approach,
+	// and check if a re-render is needed after first frame,
+	// or just let first frame be possibly imperfect on other compositors,
+	// and see how that goes
+	wl_surface_attach(panel->wl_surface,
+		state->bottom_panel_test_buffer->wl_buffer, 0, 0);
+	wl_surface_commit(panel->wl_surface);
+	wl_display_roundtrip(state->display);
 
+	zwlr_layer_surface_v1_set_exclusive_zone(panel->layer_surface,
+		state->config->dock == DOCK_DOCK ? panel->height :
+		state->config->dock == DOCK_YEILD ? 0 : -1);
+	wl_surface_set_buffer_scale(panel->wl_surface, panel->scale);
 	panel->buffer_pool = buffer_pool_new(state->wl_globals.shm,
 		panel->width, panel->height, panel->scale);
+
 	return panel;
 }
 
