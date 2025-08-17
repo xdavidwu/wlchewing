@@ -56,6 +56,7 @@ struct wlchewing_state {
 
 	struct wlchewing_bottom_panel *bottom_panel;
 	PangoLayout *bottom_panel_text_layout;
+	PangoLayout *bottom_panel_key_hint_layout;
 	uint32_t bottom_panel_text_height;
 	struct wlchewing_buffer *bottom_panel_test_buffer;
 

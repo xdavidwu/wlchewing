@@ -1,5 +1,4 @@
 #include <assert.h>
-#include <stdio.h>
 
 #include "bottom-panel.h"
 #include "buffer.h"
@@ -44,25 +43,28 @@ static constexpr int cand_padding = 4;
 
 static int render_cand(struct wlchewing_state *state,
 		struct wlchewing_buffer *buffer, const char *text, int index) {
-	if (state->config->key_hint && index < 10) {
-		char *markup = xcalloc(strlen(text) + 27, sizeof(char));
-		sprintf(markup, "<sup><small>%d</small></sup>%s", index == 9 ? 0 : index + 1, text);
-		pango_layout_set_markup(state->bottom_panel_text_layout, markup, -1);
-		free(markup);
-	} else {
-		pango_layout_set_attributes(state->bottom_panel_text_layout, NULL);
-		pango_layout_set_text(state->bottom_panel_text_layout, text, -1);
+	char hint[2] = {
+		(state->config->key_hint && index < 10) ?
+			index == 9 ? '0' : '1' + index : 0,
+		0
+	};
+	int width, hint_width = 0;
+	if (hint[0]){
+		pango_layout_set_text(state->bottom_panel_key_hint_layout, hint, -1);
+		pango_layout_get_pixel_size(state->bottom_panel_key_hint_layout, &hint_width, NULL);
 	}
-	int width;
+	pango_layout_set_text(state->bottom_panel_text_layout, text, -1);
 	pango_layout_get_pixel_size(state->bottom_panel_text_layout, &width, NULL);
+	width += hint_width;
 
+	const int cell_width = width + cand_padding * 2;
 	if (!index) {
 		cairo_set_source_rgba(buffer->cairo,
 			state->config->selection_color[0],
 			state->config->selection_color[1],
 			state->config->selection_color[2],
 			state->config->selection_color[3]);
-		cairo_rectangle(buffer->cairo, 0, 0, width + cand_padding * 2, state->bottom_panel->buffer_pool->height);
+		cairo_rectangle(buffer->cairo, 0, 0, cell_width, state->bottom_panel->buffer_pool->height);
 		cairo_fill(buffer->cairo);
 	}
 
@@ -72,8 +74,12 @@ static int render_cand(struct wlchewing_state *state,
 	cairo_set_source_rgba(buffer->cairo, text_color[0], text_color[1],
 		text_color[2], text_color[3]);
 	cairo_move_to(buffer->cairo, cand_padding, 0);
+	if (hint[0]) {
+		pango_cairo_show_layout(buffer->cairo, state->bottom_panel_key_hint_layout);
+		cairo_move_to(buffer->cairo, cand_padding + hint_width, 0);
+	}
 	pango_cairo_show_layout(buffer->cairo, state->bottom_panel_text_layout);
-	return width + cand_padding * 2;
+	return cell_width;
 }
 
 int bottom_panel_init(struct wlchewing_state *state) {
@@ -89,6 +95,10 @@ int bottom_panel_init(struct wlchewing_state *state) {
 		pango_layout_set_font_description(state->bottom_panel_text_layout, desc);
 		pango_font_description_free(desc);
 	}
+	state->bottom_panel_key_hint_layout = pango_layout_copy(state->bottom_panel_text_layout);
+	PangoAttrList *attrs = pango_attr_list_from_string("line-height 1.1\nscale 0.75");
+	pango_layout_set_attributes(state->bottom_panel_key_hint_layout, attrs);
+	pango_attr_list_unref(attrs);
 
 	pango_layout_set_text(state->bottom_panel_text_layout,
 		pango_language_get_sample_string(
@@ -179,9 +189,9 @@ void bottom_panel_render(struct wlchewing_state *state) {
 				i + state->bottom_panel->selected_index), i);
 		total_offset += offset;
 	}
-	cairo_restore(cairo);
 	wl_surface_attach(state->bottom_panel->wl_surface, buffer->wl_buffer, 0, 0);
 	wl_surface_damage_buffer(state->bottom_panel->wl_surface, 0, 0,
 		pool->width * pool->scale, pool->height * pool->scale);
 	wl_surface_commit(state->bottom_panel->wl_surface);
+	cairo_restore(cairo);
 }
