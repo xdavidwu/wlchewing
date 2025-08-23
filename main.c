@@ -1,6 +1,8 @@
 #include <assert.h>
+#include <limits.h>
 #include <linux/input-event-codes.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <sys/epoll.h>
 #include <sys/timerfd.h>
@@ -64,7 +66,7 @@ static const struct wl_seat_listener seat_listener_selection = {
 	.name		= seat_name,
 };
 
-static void handle_global(void *data, struct wl_registry *registry,
+static void registry_global(void *data, struct wl_registry *registry,
 		uint32_t name, const char *interface, uint32_t version) {
 	struct global_map_el *el = globals;
 	struct wlchewing_state *state = data;
@@ -96,8 +98,8 @@ static void handle_global(void *data, struct wl_registry *registry,
 }
 
 static const struct wl_registry_listener registry_listener = {
-	.global = handle_global,
-	.global_remove = (typeof(registry_listener.global_remove))noop,
+	.global		= registry_global,
+	.global_remove	= (typeof(registry_listener.global_remove))noop,
 };
 
 static const struct wl_output_listener output_listener = {
@@ -183,12 +185,12 @@ static void pointer_axis_source(void *data, struct wl_pointer *pointer,
 }
 
 static const struct wl_pointer_listener pointer_listener = {
-	.enter	= (typeof(pointer_listener.enter))noop,
-	.leave	= (typeof(pointer_listener.leave))noop,
-	.motion	= (typeof(pointer_listener.motion))noop,
-	.button	= pointer_button,
-	.axis	= pointer_axis,
-	.frame	= pointer_frame,
+	.enter		= (typeof(pointer_listener.enter))noop,
+	.leave		= (typeof(pointer_listener.leave))noop,
+	.motion		= (typeof(pointer_listener.motion))noop,
+	.button		= pointer_button,
+	.axis		= pointer_axis,
+	.frame		= pointer_frame,
 	.axis_source	= pointer_axis_source,
 	.axis_stop	= pointer_axis_stop,
 	.axis_discrete	= pointer_axis_discrete,
@@ -209,6 +211,16 @@ static const struct wl_seat_listener seat_listener = {
 	.capabilities	= seat_capabilities,
 	.name		= (typeof(seat_listener.name))noop,
 };
+
+static inline void arm_epollin_for(int ep, int fd, bool et, const char *desc) {
+	struct epoll_event epoll = {
+		.events = et ? EPOLLIN | EPOLLET : EPOLLIN,
+		.data = {
+			.fd = fd,
+		},
+	};
+	must_errno(epoll_ctl(ep, EPOLL_CTL_ADD, fd, &epoll), desc);
+}
 
 int main(int argc, char *argv[]) {
 	struct wlchewing_state *state = &global_state;
@@ -251,46 +263,19 @@ int main(int argc, char *argv[]) {
 	int epoll_fd = must_errno(epoll_create1(EPOLL_CLOEXEC), "setup epoll");
 
 	int display_fd = wl_display_get_fd(state->display);
-	struct epoll_event display_epoll = {
-		.events = EPOLLIN,
-		.data = {
-			.fd = display_fd,
-		},
-	};
-	must_errno(
-		epoll_ctl(epoll_fd, EPOLL_CTL_ADD, display_fd, &display_epoll),
-		"watch Wayland event"
-	);
+	arm_epollin_for(epoll_fd, display_fd, false, "watch Wayland event");
 
 	state->timer_fd = must_errno(
 		timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC),
 		"create timer"
 	);
-	struct epoll_event timer_epoll = {
-		.events = EPOLLIN | EPOLLET,
-		.data = {
-			.fd = state->timer_fd,
-		},
-	};
-	must_errno(
-		epoll_ctl(epoll_fd, EPOLL_CTL_ADD, state->timer_fd, &timer_epoll),
-		"watch timer event"
-	);
+	arm_epollin_for(epoll_fd, state->timer_fd, true, "watch timer event");
 
-	int bus_fd;
+	int bus_fd = INT_MAX;
 	if (state->config.tray_icon) {
 		state->sni = xcalloc(1, sizeof(struct wlchewing_sni));
 		bus_fd = must_errno(sni_setup(state->sni), "setup dbus");
-		struct epoll_event bus_epoll = {
-			.events = EPOLLIN,
-			.data = {
-				.fd = bus_fd,
-			},
-		};
-		must_errno(
-			epoll_ctl(epoll_fd, EPOLL_CTL_ADD, bus_fd, &bus_epoll),
-			"watch dbus event"
-		);
+		arm_epollin_for(epoll_fd, bus_fd, false, "watch dbus event");
 	}
 
 	im_setup(state);

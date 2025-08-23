@@ -7,17 +7,23 @@
 
 static const sd_bus_vtable service_vtable[] = {
 	SD_BUS_VTABLE_START(0),
-	SD_BUS_PROPERTY("Category", "s", NULL, offsetof(struct wlchewing_sni, category),
+	SD_BUS_PROPERTY("Category", "s", NULL,
+			offsetof(struct wlchewing_sni, category),
 			SD_BUS_VTABLE_PROPERTY_CONST),
-	SD_BUS_PROPERTY("Id", "s", NULL, offsetof(struct wlchewing_sni, id),
+	SD_BUS_PROPERTY("Id", "s", NULL,
+			offsetof(struct wlchewing_sni, id),
 			SD_BUS_VTABLE_PROPERTY_CONST),
-	SD_BUS_PROPERTY("Title", "s", NULL, offsetof(struct wlchewing_sni, title),
+	SD_BUS_PROPERTY("Title", "s", NULL,
+			offsetof(struct wlchewing_sni, title),
 			SD_BUS_VTABLE_PROPERTY_CONST),
-	SD_BUS_PROPERTY("Status", "s", NULL, offsetof(struct wlchewing_sni, status),
+	SD_BUS_PROPERTY("Status", "s", NULL,
+			offsetof(struct wlchewing_sni, status),
 			SD_BUS_VTABLE_PROPERTY_CONST),
-	SD_BUS_PROPERTY("WindowId", "u", NULL, offsetof(struct wlchewing_sni, window_id),
+	SD_BUS_PROPERTY("WindowId", "u", NULL,
+			offsetof(struct wlchewing_sni, window_id),
 			SD_BUS_VTABLE_PROPERTY_CONST),
-	SD_BUS_PROPERTY("IconName", "s", NULL, offsetof(struct wlchewing_sni, icon_name),
+	SD_BUS_PROPERTY("IconName", "s", NULL,
+			offsetof(struct wlchewing_sni, icon_name),
 			SD_BUS_VTABLE_PROPERTY_EMITS_CHANGE),
 	SD_BUS_SIGNAL("NewIcon", "", 0),
 	SD_BUS_VTABLE_END
@@ -68,11 +74,13 @@ int sni_set_icon(struct wlchewing_sni *sni, bool english) {
 }
 
 int sni_setup(struct wlchewing_sni *sni) {
-	sni->category = "SystemServices";
-	sni->id = "wlchewing";
-	sni->title = "Wayland Chinese zhuyin input method with libchewing";
-	sni->status = "Active";
-	sni->icon_name = "wlchewing-bopomofo";
+	*sni = (struct wlchewing_sni){
+		.category	= "SystemServices",
+		.id		= "wlchewing",
+		.title		= "Chinese zhuyin input method",
+		.status		= "Active",
+		.icon_name	= "wlchewing-bopomofo",
+	};
 	int res;
 	char buf[64];
 	res = errnoify(sd_bus_open_user(&sni->bus));

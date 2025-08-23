@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "wlchewing.h"
+#include "config.h"
 
 static const struct option long_options[] = {
 	{"start-with-english",	no_argument,		NULL,	'e'},
@@ -47,45 +47,38 @@ Usage: %s [OPTIONS]...\n\
 \n\
 COLOR is color specified as either #RRGGBB or #RRGGBBAA.\n";
 
-static constexpr struct wlchewing_config defaults = {
-	.text_color		= {1.0, 1.0, 1.0, 1.0},
-	.selection_text_color	= {1.0, 1.0, 1.0, 1.0},
-	.background_color	= {0.0, 0.0, 0.0, 1.0},
-	.selection_color	= {0.25, 0.25, 0.25, 1.0},
-	.tray_icon		= true,
-	.key_hint		= true,
-};
-
 void config_init(struct wlchewing_config *config) {
-	*config = defaults;
+	*config = (struct wlchewing_config){
+		.text_color		= {1.0, 1.0, 1.0, 1.0},
+		.selection_text_color	= {1.0, 1.0, 1.0, 1.0},
+		.background_color	= {0.0, 0.0, 0.0, 1.0},
+		.selection_color	= {0.25, 0.25, 0.25, 1.0},
+		.tray_icon		= true,
+		.key_hint		= true,
+	};
 }
 
-static int decode_color(const char *str, double *rgba) {
-	int r, g, b, a;
+static int decode_color(const char *str, double rgba[4]) {
+	int r, g, b, a = 0;
 	char dummy;
-	if (sscanf(str, "#%2x%2x%2x%2x%c", &r, &g, &b, &a, &dummy) == 4) {
-		rgba[0] = r / 255.0;
-		rgba[1] = g / 255.0;
-		rgba[2] = b / 255.0;
-		rgba[3] = a / 255.0;
-		return 0;
-	} else if (sscanf(str, "#%2x%2x%2x%c", &r, &g, &b, &dummy) == 3) {
-		rgba[0] = r / 255.0;
-		rgba[1] = g / 255.0;
-		rgba[2] = b / 255.0;
-		return 0;
+	if (sscanf(str, "#%2x%2x%2x%2x%c", &r, &g, &b, &a, &dummy) != 4 &&
+			sscanf(str, "#%2x%2x%2x%c", &r, &g, &b, &dummy) != 3) {
+		return -EINVAL;
 	}
-	return -EINVAL;
+	rgba[0] = r / 255.0;
+	rgba[1] = g / 255.0;
+	rgba[2] = b / 255.0;
+	rgba[3] = a / 255.0;
+	return 0;
 }
 
 int config_read_opts(int argc, char *argv[], struct wlchewing_config *config) {
 	int opt;
 	while ((opt = getopt_long(argc, argv, "ed:f:tT:b:s:S:n", long_options, NULL)) != -1) {
-		if (opt == '?') {
+		switch (opt) {
+		case '?':
 			fprintf(stderr, help, argv[0]);
 			return -EINVAL;
-		}
-		switch (opt) {
 		case 'e':
 			config->start_eng = true;
 			break;
