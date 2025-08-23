@@ -92,6 +92,38 @@ void im_candidates_move_by(struct wlchewing_state *state, int diff) {
 	}
 }
 
+void im_reset(struct wlchewing_state *state) {
+	if (state->bottom_panel) {
+		bottom_panel_destroy(state->bottom_panel);
+		state->bottom_panel = NULL;
+	}
+	chewing_Reset(state->chewing);
+}
+
+void im_mode_switch(struct wlchewing_state *state, bool forwarding) {
+	if (state->forwarding == forwarding) {
+		return;
+	}
+	if (forwarding) {
+		// toggling to English, do commit and reset
+		if (chewing_buffer_Check(state->chewing)) {
+			chewing_commit_preedit_buf(state->chewing);
+			zwp_input_method_v2_commit_string(state->input_method,
+				chewing_commit_String_static(state->chewing));
+			chewing_ack(state->chewing);
+		}
+		im_reset(state);
+		zwp_input_method_v2_set_preedit_string(
+			state->input_method, "", 0, 0);
+		zwp_input_method_v2_commit(state->input_method,
+			state->serial);
+		wl_display_roundtrip(state->display);
+		vte_hack(state);
+	}
+	state->forwarding = forwarding;
+	sni_set_icon(state->sni, state->forwarding);
+}
+
 enum press_action im_key_press(struct wlchewing_state *state, uint32_t key) {
 	xkb_keysym_t keysym = xkb_state_key_get_one_sym(state->xkb_state,
 		key + 8);
@@ -99,21 +131,7 @@ enum press_action im_key_press(struct wlchewing_state *state, uint32_t key) {
 	if (xkb_state_mod_name_is_active(state->xkb_state, XKB_MOD_NAME_CTRL,
 			XKB_STATE_MODS_EFFECTIVE) > 0) {
 		if (keysym == XKB_KEY_space) {
-			// Chinese / English(forwarding) toggle
-			state->forwarding = !state->forwarding;
-			sni_set_icon(state->sni, state->forwarding);
-			state->shift_only = false;
-			chewing_Reset(state->chewing);
-			if (state->bottom_panel) {
-				bottom_panel_destroy(state->bottom_panel);
-				state->bottom_panel = NULL;
-			}
-			zwp_input_method_v2_set_preedit_string(
-				state->input_method, "", 0, 0);
-			zwp_input_method_v2_commit(state->input_method,
-				state->serial);
-			wl_display_roundtrip(state->display);
-			vte_hack(state);
+			im_mode_switch(state, !state->forwarding);
 			return PRESS_ARM_TIMER;
 		}
 		return PRESS_FORWARD;
@@ -288,29 +306,8 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 				state->xkb_state, key + 8);
 		if ((keysym == XKB_KEY_Shift_L || keysym == XKB_KEY_Shift_R) &&
 				state->shift_only) {
-			if (!state->forwarding) {
-				// toggle to English, and commit the string
-				state->forwarding = true;
-				sni_set_icon(state->sni, state->forwarding);
-				if (chewing_buffer_Check(state->chewing)) {
-					chewing_commit_preedit_buf(state->chewing);
-					zwp_input_method_v2_commit_string(state->input_method,
-						chewing_commit_String_static(state->chewing));
-					chewing_ack(state->chewing);
-				}
-				zwp_input_method_v2_set_preedit_string(
-					state->input_method, "", 0, 0);
-				zwp_input_method_v2_commit(state->input_method,
-					state->serial);
-				wl_display_roundtrip(state->display);
-				vte_hack(state);
-			} else {
-				// shift pressed and released without other keys,
-				// switch back to Chinese mode
-				state->forwarding = false;
-				sni_set_icon(state->sni, state->forwarding);
-				chewing_Reset(state->chewing);
-			}
+			state->shift_only = false;
+			im_mode_switch(state, !state->forwarding);
 			return;
 		}
 
@@ -441,12 +438,7 @@ static void handle_done(void *data,
 	} else if (!state->pending_activate && state->activated) {
 		zwp_input_method_keyboard_grab_v2_release(state->kb_grab);
 		state->kb_grab = NULL;
-		if (state->bottom_panel) {
-			bottom_panel_destroy(state->bottom_panel);
-			state->bottom_panel = NULL;
-		}
-		chewing_Reset(state->chewing);
-
+		im_reset(state);
 		im_release_all_keys(state);
 	}
 	state->activated = state->pending_activate;
