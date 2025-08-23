@@ -35,7 +35,7 @@ struct wlchewing_wl_globals {
 };
 
 struct wlchewing_state {
-	struct wlchewing_config *config;
+	struct wlchewing_config config;
 
 	struct wl_display *display;
 	struct wlchewing_wl_globals wl_globals;

@@ -22,7 +22,7 @@ struct wlchewing_config {
 	bool chewing_use_xkb_default;
 };
 
-struct wlchewing_config *config_new();
+void config_init(struct wlchewing_config *config);
 
 int config_read_opts(int argc, char *argv[], struct wlchewing_config *config);
 

@@ -3,8 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "config.h"
-#include "xmem.h"
+#include "wlchewing.h"
 
 static const struct option long_options[] = {
 	{"start-with-english",	no_argument,		NULL,	'e'},
@@ -57,11 +56,8 @@ static constexpr struct wlchewing_config defaults = {
 	.key_hint		= true,
 };
 
-struct wlchewing_config *config_new() {
-	struct wlchewing_config *config = xcalloc(1,
-		sizeof(struct wlchewing_config));
+void config_init(struct wlchewing_config *config) {
 	*config = defaults;
-	return config;
 }
 
 static int decode_color(const char *str, double *rgba) {

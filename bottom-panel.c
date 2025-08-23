@@ -45,7 +45,7 @@ static constexpr int cand_padding = 4;
 static int render_cand(struct wlchewing_state *state,
 		struct wlchewing_buffer *buffer, const char *text, int index) {
 	char hint[2] = {
-		(state->config->key_hint && index < 10) ?
+		(state->config.key_hint && index < 10) ?
 			index == 9 ? '0' : '1' + index : 0,
 		0
 	};
@@ -61,17 +61,17 @@ static int render_cand(struct wlchewing_state *state,
 	const int cell_width = width + cand_padding * 2;
 	if (!index) {
 		cairo_set_source_rgba(buffer->cairo,
-			state->config->selection_color[0],
-			state->config->selection_color[1],
-			state->config->selection_color[2],
-			state->config->selection_color[3]);
+			state->config.selection_color[0],
+			state->config.selection_color[1],
+			state->config.selection_color[2],
+			state->config.selection_color[3]);
 		cairo_rectangle(buffer->cairo, 0, 0, cell_width, state->bottom_panel->buffer_pool->height);
 		cairo_fill(buffer->cairo);
 	}
 
 	const double *text_color = !index ?
-		state->config->selection_text_color :
-		state->config->text_color;
+		state->config.selection_text_color :
+		state->config.text_color;
 	cairo_set_source_rgba(buffer->cairo, text_color[0], text_color[1],
 		text_color[2], text_color[3]);
 	cairo_move_to(buffer->cairo, cand_padding, 0);
@@ -92,9 +92,9 @@ int bottom_panel_init(struct wlchewing_state *state) {
 	assert(state->bottom_panel_text_layout);
 	cairo_destroy(cairo);
 
-	if (state->config->font) {
+	if (state->config.font) {
 		PangoFontDescription *desc =
-			pango_font_description_from_string(state->config->font);
+			pango_font_description_from_string(state->config.font);
 		pango_layout_set_font_description(state->bottom_panel_text_layout, desc);
 		pango_font_description_free(desc);
 	}
@@ -131,7 +131,7 @@ struct wlchewing_bottom_panel *bottom_panel_new(struct wlchewing_state *state) {
 	zwlr_layer_surface_v1_add_listener(panel->layer_surface,
 		&layer_surface_listener, panel);
 	zwlr_layer_surface_v1_set_anchor(panel->layer_surface,
-		(state->config->anchor_top ? ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP :
+		(state->config.anchor_top ? ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP :
 			ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM) |
 		ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT |
 		ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
@@ -142,8 +142,8 @@ struct wlchewing_bottom_panel *bottom_panel_new(struct wlchewing_state *state) {
 	wl_display_roundtrip(state->display);
 
 	zwlr_layer_surface_v1_set_exclusive_zone(panel->layer_surface,
-		state->config->dock == DOCK_DOCK ? panel->height :
-		state->config->dock == DOCK_YEILD ? 0 : -1);
+		state->config.dock == DOCK_DOCK ? panel->height :
+		state->config.dock == DOCK_YEILD ? 0 : -1);
 	wl_surface_set_buffer_scale(panel->wl_surface, panel->scale);
 	panel->buffer_pool = buffer_pool_new(state->wl_globals.shm,
 		panel->width, panel->height, panel->scale);
@@ -167,10 +167,10 @@ void bottom_panel_render(struct wlchewing_state *state) {
 	struct wlchewing_buffer *buffer = buffer_pool_get_buffer(pool);
 	cairo_t *cairo = buffer->cairo;
 	cairo_save(cairo);
-	cairo_set_source_rgba(cairo, state->config->background_color[0],
-		state->config->background_color[1],
-		state->config->background_color[2],
-		state->config->background_color[3]);
+	cairo_set_source_rgba(cairo, state->config.background_color[0],
+		state->config.background_color[1],
+		state->config.background_color[2],
+		state->config.background_color[3]);
 	cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
 	cairo_paint(cairo);
 	cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
@@ -198,8 +198,8 @@ void bottom_panel_render(struct wlchewing_state *state) {
 		buffer_pool_destroy(state->bottom_panel->buffer_pool);
 
 		zwlr_layer_surface_v1_set_exclusive_zone(panel->layer_surface,
-			state->config->dock == DOCK_DOCK ? panel->height :
-			state->config->dock == DOCK_YEILD ? 0 : -1);
+			state->config.dock == DOCK_DOCK ? panel->height :
+			state->config.dock == DOCK_YEILD ? 0 : -1);
 		wl_surface_set_buffer_scale(panel->wl_surface, panel->scale);
 		state->bottom_panel->buffer_pool = buffer_pool_new(
 			state->wl_globals.shm,

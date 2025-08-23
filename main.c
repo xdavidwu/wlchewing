@@ -53,7 +53,7 @@ static void handle_signal(int signo) {
 static const struct wl_output_listener output_listener;
 
 static void seat_name(void *data, struct wl_seat *seat, const char *name) {
-	if (strcmp(name, global_state.config->seat) == 0) {
+	if (strcmp(name, global_state.config.seat) == 0) {
 		global_state.seat_name = (uintptr_t)data;
 	}
 	wl_seat_destroy(seat);
@@ -82,7 +82,7 @@ static void handle_global(void *data, struct wl_registry *registry,
 			&wl_output_interface, 3);
 		wl_output_add_listener(output, &output_listener, NULL);
 	} else if (strcmp(interface, wl_seat_interface.name) == 0) { // v5
-		if (!state->config->seat) {
+		if (!state->config.seat) {
 			state->seat_name = name;
 		} else {
 			// get name event for seat selection
@@ -210,8 +210,8 @@ static const struct wl_seat_listener seat_listener = {
 
 int main(int argc, char *argv[]) {
 	struct wlchewing_state *state = &global_state;
-	state->config = config_new();
-	if (config_read_opts(argc, argv, state->config) < 0) {
+	config_init(&state->config);
+	if (config_read_opts(argc, argv, &state->config) < 0) {
 		return EXIT_FAILURE;
 	}
 
@@ -235,10 +235,10 @@ int main(int argc, char *argv[]) {
 		el++;
 	}
 	if (state->seat_name == UINT32_MAX) {
-		if (!state->config->seat) {
+		if (!state->config.seat) {
 			wlchewing_err("No seat found");
 		} else {
-			wlchewing_err("Seat %s not found", state->config->seat);
+			wlchewing_err("Seat %s not found", state->config.seat);
 		}
 		return EXIT_FAILURE;
 	}
@@ -276,7 +276,7 @@ int main(int argc, char *argv[]) {
 	);
 
 	int bus_fd;
-	if (state->config->tray_icon) {
+	if (state->config.tray_icon) {
 		state->sni = xcalloc(1, sizeof(struct wlchewing_sni));
 		bus_fd = must_errno(sni_setup(state->sni), "setup dbus");
 		struct epoll_event bus_epoll = {
@@ -315,7 +315,7 @@ int main(int argc, char *argv[]) {
 				"read from timer"
 			);
 			im_key_press(state, state->last_key);
-		} else if (state->config->tray_icon && event_caught.data.fd == bus_fd) {
+		} else if (state->config.tray_icon && event_caught.data.fd == bus_fd) {
 			must_errno(
 				errnoify(sd_bus_process(state->sni->bus, NULL)),
 				"process dbus message"

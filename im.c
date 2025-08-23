@@ -367,7 +367,7 @@ static void handle_keymap(void *data, struct zwp_input_method_keyboard_grab_v2
 	char *keymap_string = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (state->xkb_keymap_string == NULL ||
 			strcmp(state->xkb_keymap_string, keymap_string) != 0) {
-		if (!state->config->chewing_use_xkb_default) {
+		if (!state->config.chewing_use_xkb_default) {
 			struct xkb_keymap *keymap = xkb_keymap_new_from_string(
 				state->xkb_context, keymap_string,
 				XKB_KEYMAP_FORMAT_TEXT_V1,
@@ -476,7 +476,7 @@ void im_release_all_keys(struct wlchewing_state *state) {
 }
 
 void im_setup(struct wlchewing_state *state) {
-	state->forwarding = state->config->start_eng;
+	state->forwarding = state->config.start_eng;
 	sni_set_icon(state->sni, state->forwarding);
 
 	state->input_method = zwp_input_method_manager_v2_get_input_method(
