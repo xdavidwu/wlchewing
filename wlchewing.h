@@ -42,7 +42,7 @@ struct wlchewing_state {
 	uint32_t seat_name;
 
 	struct zwp_input_method_v2 *input_method;
-	struct zwp_input_method_keyboard_grab_v2 *kb_grab;
+	struct zwp_input_method_keyboard_grab_v2 *keyboard_grab;
 	bool pending_activate;
 	bool activated;
 	int32_t serial;

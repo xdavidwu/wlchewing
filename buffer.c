@@ -10,13 +10,13 @@
 #include "wlchewing.h"
 #include "xmem.h"
 
-static void handle_release(void *data, struct wl_buffer *wl_buffer) {
+static void buffer_release(void *data, struct wl_buffer *wl_buffer) {
 	struct wlchewing_buffer *buffer = data;
 	buffer->available = true;
 }
 
 static const struct wl_buffer_listener buffer_listener = {
-	.release	= handle_release,
+	.release	= buffer_release,
 };
 
 struct wlchewing_buffer *buffer_new(struct wl_shm *shm,

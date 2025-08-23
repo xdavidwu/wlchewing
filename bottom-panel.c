@@ -7,16 +7,16 @@
 #include "xmem.h"
 
 static void layer_surface_configure(void *data,
-		struct zwlr_layer_surface_v1 *wlr_layer_surface,
+		struct zwlr_layer_surface_v1 *layer_surface,
 		uint32_t serial, uint32_t w, uint32_t h) {
 	struct wlchewing_bottom_panel *panel = data;
 	panel->width = w;
 	panel->height = h;
-	zwlr_layer_surface_v1_ack_configure(wlr_layer_surface, serial);
+	zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
 }
 
 static void layer_surface_closed(void *data,
-		struct zwlr_layer_surface_v1 *wlr_layer_surface) {
+		struct zwlr_layer_surface_v1 *layer_surface) {
 	struct wlchewing_bottom_panel *panel = data;
 	bottom_panel_destroy(panel);
 }
@@ -27,7 +27,7 @@ static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
 };
 
 static void surface_preferred_buffer_scale(void *data,
-		struct wl_surface *wl_surface, int32_t scale) {
+		struct wl_surface *surface, int32_t scale) {
 	struct wlchewing_bottom_panel *panel = data;
 	panel->scale = scale;
 }

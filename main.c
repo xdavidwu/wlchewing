@@ -107,14 +107,14 @@ static const struct wl_output_listener output_listener = {
 	.done		= (typeof(output_listener.done))noop
 };
 
-static void pointer_axis_discrete(void *data, struct wl_pointer *wl_pointer,
+static void pointer_axis_discrete(void *data, struct wl_pointer *pointer,
 		uint32_t axis, int32_t discrete) {
 	struct wlchewing_state *state = data;
 	state->has_discrete = true;
 	im_candidates_move_by(state, discrete);
 }
 
-static void pointer_button(void *data, struct wl_pointer *wl_pointer,
+static void pointer_button(void *data, struct wl_pointer *pointer,
 		uint32_t serial, uint32_t time, uint32_t button, uint32_t state) {
 	if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
 		if (button == BTN_MIDDLE || button == BTN_RIGHT) {
@@ -123,7 +123,7 @@ static void pointer_button(void *data, struct wl_pointer *wl_pointer,
 	}
 }
 
-static void pointer_axis(void *data, struct wl_pointer *wl_pointer,
+static void pointer_axis(void *data, struct wl_pointer *pointer,
 		uint32_t time, uint32_t axis, wl_fixed_t value) {
 	if (axis < 2) {
 		struct wlchewing_state *state = data;
@@ -136,7 +136,7 @@ static double pixels_per_detent = 15;
 // deal with the frame for continuous sources
 // treat unknown (unreported) as continuous (but still with discrete check)
 // perhaps we should also check for value120?
-static void pointer_frame(void *data, struct wl_pointer *wl_pointer) {
+static void pointer_frame(void *data, struct wl_pointer *pointer) {
 	struct wlchewing_state *state = data;
 	if (!state->has_discrete &&
 			state->pending_source != WL_POINTER_AXIS_SOURCE_WHEEL &&
@@ -168,14 +168,16 @@ static void pointer_frame(void *data, struct wl_pointer *wl_pointer) {
 	state->has_discrete = false;
 }
 
-static void pointer_axis_stop(void *data, struct wl_pointer *wl_pointer, uint32_t time, uint32_t axis) {
+static void pointer_axis_stop(void *data, struct wl_pointer *pointer,
+		uint32_t time, uint32_t axis) {
 	if (axis < 2) {
 		struct wlchewing_state *state = data;
 		state->acc_axis[axis] = 0;
 	}
 }
 
-static void pointer_axis_source(void *data, struct wl_pointer *wl_pointer, uint32_t axis_source) {
+static void pointer_axis_source(void *data, struct wl_pointer *pointer,
+		uint32_t axis_source) {
 	struct wlchewing_state *state = data;
 	state->pending_source = axis_source;
 }

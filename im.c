@@ -264,9 +264,10 @@ enum press_action im_key_press(struct wlchewing_state *state, uint32_t key) {
 	return PRESS_ARM_TIMER;
 }
 
-static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
-		*zwp_input_method_keyboard_grab_v2, uint32_t serial,
-		uint32_t time, uint32_t key, uint32_t key_state) {
+static void keyboard_grab_key(void *data,
+		struct zwp_input_method_keyboard_grab_v2 *keyboard_grab,
+		uint32_t serial, uint32_t time,
+		uint32_t key, uint32_t key_state) {
 	struct wlchewing_state *state = data;
 	if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
 		struct wlchewing_keysym *newkey;
@@ -280,8 +281,7 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 			newkey->key = key;
 			wl_list_insert(&state->press_sent_keysyms,
 				&newkey->link);
-			// update the millis offset so we can make it more
-			// accurate when we pop pending release
+			// update translation of our clock to keyboard_grab
 			state->millis_offset = get_millis() - time;
 			wl_display_roundtrip(state->display);
 			break;
@@ -344,10 +344,10 @@ static void handle_key(void *data, struct zwp_input_method_keyboard_grab_v2
 	}
 }
 
-static void handle_modifiers(void *data, struct zwp_input_method_keyboard_grab_v2
-		*zwp_input_method_keyboard_grab_v2, uint32_t serial,
-		uint32_t mods_depressed, uint32_t mods_latched,
-		uint32_t mods_locked, uint32_t group) {
+static void keyboard_grab_modifiers(void *data,
+		struct zwp_input_method_keyboard_grab_v2 *keyboard_grab,
+		uint32_t serial, uint32_t mods_depressed,
+		uint32_t mods_latched, uint32_t mods_locked, uint32_t group) {
 	struct wlchewing_state *state = data;
 	xkb_state_update_mask(state->xkb_state, mods_depressed, mods_latched,
 		mods_locked, 0, 0, group);
@@ -357,9 +357,9 @@ static void handle_modifiers(void *data, struct zwp_input_method_keyboard_grab_v
 	wl_display_roundtrip(state->display);
 }
 
-static void handle_keymap(void *data, struct zwp_input_method_keyboard_grab_v2
-		*zwp_input_method_keyboard_grab_v2, uint32_t format,
-		int32_t fd, uint32_t size) {
+static void keyboard_grab_keymap(void *data,
+		struct zwp_input_method_keyboard_grab_v2 *keyboard_grab,
+		uint32_t format, int32_t fd, uint32_t size) {
 	struct wlchewing_state *state = data;
 	char *keymap_string = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (state->xkb_keymap_string == NULL ||
@@ -384,60 +384,60 @@ static void handle_keymap(void *data, struct zwp_input_method_keyboard_grab_v2
 	munmap(keymap_string, size);
 }
 
-static void handle_repeat_info(void *data,
-		struct zwp_input_method_keyboard_grab_v2
-		*zwp_input_method_keyboard_grab_v2, int32_t rate,
-		int32_t delay) {
+static void keyboard_grab_repeat_info(void *data,
+		struct zwp_input_method_keyboard_grab_v2 *keyboard_grab,
+		int32_t rate, int32_t delay) {
 	struct wlchewing_state *state = data;
 	state->repeat_info.it_interval.tv_nsec = rate ? 1000 * 1000 * 1000 / rate : 0;
 	state->repeat_info.it_value.tv_sec = delay / 1000;
 	state->repeat_info.it_value.tv_nsec = (delay % 1000) * 1000 * 1000;
 }
 
-static const struct zwp_input_method_keyboard_grab_v2_listener grab_listener = {
-	.key		= handle_key,
-	.modifiers	= handle_modifiers,
-	.keymap		= handle_keymap,
-	.repeat_info	= handle_repeat_info,
+static const struct zwp_input_method_keyboard_grab_v2_listener
+		keyboard_grab_listener = {
+	.key		= keyboard_grab_key,
+	.modifiers	= keyboard_grab_modifiers,
+	.keymap		= keyboard_grab_keymap,
+	.repeat_info	= keyboard_grab_repeat_info,
 };
 
-static void handle_activate(void *data,
-		struct zwp_input_method_v2 *zwp_input_method_v2) {
+static void input_method_activate(void *data,
+		struct zwp_input_method_v2 *input_method) {
 	struct wlchewing_state *state = data;
 	state->pending_activate = true;
 }
 
-static void handle_deactivate(void *data,
-		struct zwp_input_method_v2 *zwp_input_method_v2) {
+static void input_method_deactivate(void *data,
+		struct zwp_input_method_v2 *input_method) {
 	struct wlchewing_state *state = data;
 	state->pending_activate = false;
 }
 
-static void handle_unavailable(void *data,
-		struct zwp_input_method_v2 *zwp_input_method_v2) {
+static void input_method_unavailable(void *data,
+		struct zwp_input_method_v2 *input_method) {
 	struct wlchewing_state *state = data;
 	wlchewing_err("IM unavailable");
 	im_destory(state);
 	exit(EXIT_FAILURE);
 }
 
-static void handle_done(void *data,
-		struct zwp_input_method_v2 *zwp_input_method_v2) {
+static void input_method_done(void *data,
+		struct zwp_input_method_v2 *input_method) {
 	struct wlchewing_state *state = data;
 	state->serial++;
 	if (state->pending_activate && !state->activated) {
-		state->kb_grab = zwp_input_method_v2_grab_keyboard(
+		state->keyboard_grab = zwp_input_method_v2_grab_keyboard(
 			state->input_method);
 		// sanity check if compositor doesn't really impl it
-		if (!state->kb_grab) {
+		if (!state->keyboard_grab) {
 			wlchewing_err("Failed to grab");
 			exit(EXIT_FAILURE);
 		}
-		zwp_input_method_keyboard_grab_v2_add_listener(state->kb_grab,
-			&grab_listener, state);
+		zwp_input_method_keyboard_grab_v2_add_listener(
+			state->keyboard_grab, &keyboard_grab_listener, state);
 	} else if (!state->pending_activate && state->activated) {
-		zwp_input_method_keyboard_grab_v2_release(state->kb_grab);
-		state->kb_grab = NULL;
+		zwp_input_method_keyboard_grab_v2_release(state->keyboard_grab);
+		state->keyboard_grab = NULL;
 		im_reset(state);
 		im_release_all_keys(state);
 	}
@@ -445,14 +445,17 @@ static void handle_done(void *data,
 	wl_display_roundtrip(state->display);
 }
 
-static const struct zwp_input_method_v2_listener im_listener = {
-	.activate		= handle_activate,
-	.deactivate		= handle_deactivate,
-	.surrounding_text	= (typeof(im_listener.surrounding_text))noop,
-	.text_change_cause	= (typeof(im_listener.text_change_cause))noop,
-	.content_type		= (typeof(im_listener.content_type))noop,
-	.done			= handle_done,
-	.unavailable		= handle_unavailable,
+static const struct zwp_input_method_v2_listener input_method_listener = {
+	.activate		= input_method_activate,
+	.deactivate		= input_method_deactivate,
+	.surrounding_text	=
+		(typeof(input_method_listener.surrounding_text))noop,
+	.text_change_cause	=
+		(typeof(input_method_listener.text_change_cause))noop,
+	.content_type		=
+		(typeof(input_method_listener.content_type))noop,
+	.done			= input_method_done,
+	.unavailable		= input_method_unavailable,
 };
 
 void im_release_all_keys(struct wlchewing_state *state) {
@@ -473,7 +476,8 @@ void im_setup(struct wlchewing_state *state) {
 
 	state->input_method = zwp_input_method_manager_v2_get_input_method(
 		state->wl_globals.input_method_manager, state->wl_globals.seat);
-	zwp_input_method_v2_add_listener(state->input_method, &im_listener, state);
+	zwp_input_method_v2_add_listener(state->input_method,
+		&input_method_listener, state);
 
 	state->virtual_keyboard = zwp_virtual_keyboard_manager_v1_create_virtual_keyboard(
 		state->wl_globals.virtual_keyboard_manager, state->wl_globals.seat);
@@ -508,6 +512,7 @@ static void vte_hack(struct wlchewing_state *state) {
 	state->input_method = zwp_input_method_manager_v2_get_input_method(
 		state->wl_globals.input_method_manager, state->wl_globals.seat);
 	state->serial = 0;
-	zwp_input_method_v2_add_listener(state->input_method, &im_listener, state);
+	zwp_input_method_v2_add_listener(state->input_method,
+		&input_method_listener, state);
 	wl_display_roundtrip(state->display);
 }
