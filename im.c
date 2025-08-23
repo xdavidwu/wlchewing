@@ -121,7 +121,7 @@ void im_mode_switch(struct wlchewing_state *state, bool forwarding) {
 		vte_hack(state);
 	}
 	state->forwarding = forwarding;
-	sni_set_icon(state->sni, state->forwarding);
+	sni_notify_new_icon(state->sni);
 }
 
 enum press_action im_key_press(struct wlchewing_state *state, uint32_t key) {
@@ -472,7 +472,7 @@ void im_release_all_keys(struct wlchewing_state *state) {
 
 void im_setup(struct wlchewing_state *state) {
 	state->forwarding = state->config.start_eng;
-	sni_set_icon(state->sni, state->forwarding);
+	sni_notify_new_icon(state->sni);
 
 	state->input_method = zwp_input_method_manager_v2_get_input_method(
 		state->wl_globals.input_method_manager, state->wl_globals.seat);

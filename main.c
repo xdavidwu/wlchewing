@@ -274,7 +274,7 @@ int main(int argc, char *argv[]) {
 	int bus_fd = INT_MAX;
 	if (state->config.tray_icon) {
 		state->sni = xcalloc(1, sizeof(struct wlchewing_sni));
-		bus_fd = must_errno(sni_setup(state->sni), "setup dbus");
+		bus_fd = must_errno(sni_setup(state), "setup dbus");
 		arm_epollin_for(epoll_fd, bus_fd, false, "watch dbus event");
 	}
 
