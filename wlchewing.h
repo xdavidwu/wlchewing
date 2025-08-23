@@ -94,6 +94,8 @@ void im_release_all_keys(struct wlchewing_state *state);
 void im_candidates_move_by(struct wlchewing_state *state, int diff);
 void im_commit_candidate(struct wlchewing_state *state, int offset);
 
+void im_mode_switch(struct wlchewing_state *state, bool forwarding);
+
 [[maybe_unused]] static void noop() {
 	// no-op for wayland listeners
 }

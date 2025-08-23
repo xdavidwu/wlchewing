@@ -19,6 +19,12 @@ static int get_icon_name(sd_bus *bus, const char *path, const char *interface,
 		state->forwarding ? "wlchewing-eng" : "wlchewing-bopomofo");
 }
 
+static int activate(sd_bus_message *m, void *data, sd_bus_error *ret_error) {
+	struct wlchewing_state *state = data;
+	im_mode_switch(state, !state->forwarding);
+	return 0;
+}
+
 static_assert(sizeof(size_t) >= sizeof(uintptr_t));
 static const sd_bus_vtable service_vtable[] = {
 	SD_BUS_VTABLE_START(0),
@@ -31,6 +37,7 @@ static const sd_bus_vtable service_vtable[] = {
 	SD_BUS_PROPERTY("Status",	"s", NULL, (uintptr_t)&status,
 		SD_BUS_VTABLE_PROPERTY_CONST | SD_BUS_VTABLE_ABSOLUTE_OFFSET),
 	SD_BUS_PROPERTY("IconName",	"s", get_icon_name, 0, 0),
+	SD_BUS_METHOD("Activate", "ii", "", activate, 0),
 	SD_BUS_SIGNAL("NewIcon", "", 0),
 	SD_BUS_VTABLE_END
 };
