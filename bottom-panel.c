@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <pango/pangocairo.h>
 
 #include "bottom-panel.h"
 #include "buffer.h"

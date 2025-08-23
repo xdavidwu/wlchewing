@@ -18,7 +18,6 @@ struct wlchewing_buffer {
 struct wlchewing_buffer_pool {
 	uint32_t width, height;
 	int32_t scale;
-	off_t size;
 
 	struct wl_shm *shm;
 
