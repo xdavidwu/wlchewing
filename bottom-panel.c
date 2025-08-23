@@ -83,18 +83,21 @@ static int render_cand(struct wlchewing_state *state,
 }
 
 int bottom_panel_init(struct wlchewing_state *state) {
-	state->bottom_panel_test_buffer = buffer_new(state->wl_globals.shm, 1, 1, 1);
-	assert(state->bottom_panel_test_buffer);
-
-	state->bottom_panel_text_layout = pango_cairo_create_layout(
-		state->bottom_panel_test_buffer->cairo);
+	cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
+	cairo_t *cairo = cairo_create(surface);
+	cairo_surface_destroy(surface);
+	// fontmap, etc. from cairo 
+	state->bottom_panel_text_layout = pango_cairo_create_layout(cairo);
 	assert(state->bottom_panel_text_layout);
+	cairo_destroy(cairo);
+
 	if (state->config->font) {
 		PangoFontDescription *desc =
 			pango_font_description_from_string(state->config->font);
 		pango_layout_set_font_description(state->bottom_panel_text_layout, desc);
 		pango_font_description_free(desc);
 	}
+
 	state->bottom_panel_key_hint_layout = pango_layout_copy(state->bottom_panel_text_layout);
 	PangoAttrList *attrs = pango_attr_list_from_string("line-height 1.1\nscale 0.75");
 	pango_layout_set_attributes(state->bottom_panel_key_hint_layout, attrs);
@@ -134,17 +137,7 @@ struct wlchewing_bottom_panel *bottom_panel_new(struct wlchewing_state *state) {
 	zwlr_layer_surface_v1_set_size(panel->layer_surface, 0, panel->height);
 	wl_surface_commit(panel->wl_surface);
 	// obtain width (and probably height) via layer_surface configure
-	wl_display_roundtrip(state->display);
-
-	// get scale via wl_surface preferred_buffer_scale
-	// XXX sway do send preferred_buffer_scale before enter now
-	// maybe we should ditch the test buffer approach,
-	// and check if a re-render is needed after first frame,
-	// or just let first frame be possibly imperfect on other compositors,
-	// and see how that goes
-	wl_surface_attach(panel->wl_surface,
-		state->bottom_panel_test_buffer->wl_buffer, 0, 0);
-	wl_surface_commit(panel->wl_surface);
+	// compositors may also send preferred_buffer_scale here
 	wl_display_roundtrip(state->display);
 
 	zwlr_layer_surface_v1_set_exclusive_zone(panel->layer_surface,
@@ -168,7 +161,8 @@ void bottom_panel_render(struct wlchewing_state *state) {
 	int total = chewing_cand_TotalChoice(state->chewing);
 	assert(state->bottom_panel->selected_index < total);
 
-	struct wlchewing_buffer_pool *pool = state->bottom_panel->buffer_pool;
+	struct wlchewing_bottom_panel *panel = state->bottom_panel;
+	struct wlchewing_buffer_pool *pool = panel->buffer_pool;
 	struct wlchewing_buffer *buffer = buffer_pool_get_buffer(pool);
 	cairo_t *cairo = buffer->cairo;
 	cairo_save(cairo);
@@ -186,12 +180,29 @@ void bottom_panel_render(struct wlchewing_state *state) {
 		cairo_translate(cairo, offset, 0);
 		offset = render_cand(state, buffer,
 			chewing_cand_string_by_index_static(state->chewing,
-				i + state->bottom_panel->selected_index), i);
+				i + panel->selected_index), i);
 		total_offset += offset;
 	}
-	wl_surface_attach(state->bottom_panel->wl_surface, buffer->wl_buffer, 0, 0);
-	wl_surface_damage_buffer(state->bottom_panel->wl_surface, 0, 0,
-		pool->width * pool->scale, pool->height * pool->scale);
-	wl_surface_commit(state->bottom_panel->wl_surface);
 	cairo_restore(cairo);
+
+	wl_surface_attach(panel->wl_surface, buffer->wl_buffer, 0, 0);
+	wl_surface_damage_buffer(panel->wl_surface, 0, 0,
+		pool->width * pool->scale, pool->height * pool->scale);
+	wl_surface_commit(panel->wl_surface);
+	wl_display_roundtrip(state->display);
+
+	// a configure or preferred_buffer_scale changes
+	if (panel->width != pool->width || panel->height != pool->height ||
+			panel->scale != pool->scale) {
+		buffer_pool_destroy(state->bottom_panel->buffer_pool);
+
+		zwlr_layer_surface_v1_set_exclusive_zone(panel->layer_surface,
+			state->config->dock == DOCK_DOCK ? panel->height :
+			state->config->dock == DOCK_YEILD ? 0 : -1);
+		wl_surface_set_buffer_scale(panel->wl_surface, panel->scale);
+		state->bottom_panel->buffer_pool = buffer_pool_new(
+			state->wl_globals.shm,
+			panel->width, panel->height, panel->scale);
+		bottom_panel_render(state);
+	}
 }

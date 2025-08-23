@@ -89,7 +89,6 @@ void im_candidates_move_by(struct wlchewing_state *state, int diff) {
 	if (state->bottom_panel->selected_index != to) {
 		state->bottom_panel->selected_index = to;
 		bottom_panel_render(state);
-		wl_display_roundtrip(state->display);
 	}
 }
 
@@ -178,7 +177,6 @@ enum press_action im_key_press(struct wlchewing_state *state, uint32_t key) {
 			}
 			state->bottom_panel->selected_index = 0;
 			bottom_panel_render(state);
-			wl_display_roundtrip(state->display);
 			break;
 		default:
 			// no-op
@@ -222,7 +220,6 @@ enum press_action im_key_press(struct wlchewing_state *state, uint32_t key) {
 		if (chewing_cand_TotalChoice(state->chewing)) {
 			state->bottom_panel = bottom_panel_new(state);
 			bottom_panel_render(state);
-			wl_display_roundtrip(state->display);
 			return PRESS_ARM_TIMER;
 		}
 		handled = false;
