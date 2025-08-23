@@ -6,8 +6,6 @@
 
 struct wlchewing_sni {
 	sd_bus *bus;
-	sd_bus_slot *slot;
-	sd_bus_slot *signal_slot;
 
 	const char *category, *id, *title, *status;
 	uint32_t window_id;
