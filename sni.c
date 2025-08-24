@@ -42,27 +42,31 @@ static const sd_bus_vtable service_vtable[] = {
 	SD_BUS_VTABLE_END
 };
 
+static void try_register_sni(struct wlchewing_sni *sni) {
+	sd_bus_error err = SD_BUS_ERROR_NULL;
+	int res = sd_bus_call_method(sni->bus,
+		"org.freedesktop.StatusNotifierWatcher",
+		"/StatusNotifierWatcher",
+		"org.freedesktop.StatusNotifierWatcher",
+		"RegisterStatusNotifierItem", &err, NULL, "s",
+		sni->service_name);
+	if (res < 0) {
+		wlchewing_err("Failed to register sni: %s: %s",
+			err.name, err.message);
+	}
+}
+
 static int name_owner_changed(sd_bus_message *m, void *data,
 		sd_bus_error *ret_error) {
 	struct wlchewing_sni *sni = data;
-	int res;
-	sd_bus_error err = SD_BUS_ERROR_NULL;
 	const char *service;
-	res = errnoify(sd_bus_message_read(m, "sss", &service, NULL, NULL));
+	int res = errnoify(sd_bus_message_read(m, "sss", &service, NULL, NULL));
 	if (res < 0) {
 		wlchewing_perr("Failed to parse NameOwnerChanged message");
+		return res;
 	}
 	if (!strcmp(service, "org.freedesktop.StatusNotifierWatcher")) {
-		res = sd_bus_call_method(sni->bus,
-			"org.freedesktop.StatusNotifierWatcher",
-			"/StatusNotifierWatcher",
-			"org.freedesktop.StatusNotifierWatcher",
-			"RegisterStatusNotifierItem", &err, NULL, "s",
-			sni->service_name);
-		if (res < 0) {
-			wlchewing_err("Failed to register sni: %s: %s",
-				err.name, err.message);
-		}
+		try_register_sni(sni);
 	}
 	return 0;
 }
@@ -111,12 +115,6 @@ int sni_setup(struct wlchewing_state *state) {
 		wlchewing_perr("Failed to listen to NameOwnerChanged");
 		return res;
 	}
-	sd_bus_error err = SD_BUS_ERROR_NULL;
-	res = sd_bus_call_method(sni->bus, "org.freedesktop.StatusNotifierWatcher",
-		"/StatusNotifierWatcher", "org.freedesktop.StatusNotifierWatcher",
-		"RegisterStatusNotifierItem", &err, NULL, "s", sni->service_name);
-	if (res < 0) {
-		wlchewing_err("Failed to register sni: %s: %s", err.name, err.message);
-	}
+	try_register_sni(sni);
 	return errnoify(sd_bus_get_fd(sni->bus));
 }
