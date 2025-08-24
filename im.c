@@ -358,27 +358,27 @@ static void keyboard_grab_keymap(void *data,
 		struct zwp_input_method_keyboard_grab_v2 *keyboard_grab,
 		uint32_t format, int32_t fd, uint32_t size) {
 	struct wlchewing_state *state = data;
-	char *keymap_string = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
-	if (state->xkb_keymap_string == NULL ||
-			strcmp(state->xkb_keymap_string, keymap_string) != 0) {
+	char *keymap = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+	if (state->keymap == NULL || state->keymap_size != size ||
+			strncmp(state->keymap, keymap, size) != 0) {
 		if (!state->config.chewing_use_xkb_default) {
-			struct xkb_keymap *keymap = xkb_keymap_new_from_string(
-				state->xkb_context, keymap_string,
-				XKB_KEYMAP_FORMAT_TEXT_V1,
-				XKB_KEYMAP_COMPILE_NO_FLAGS);
+			struct xkb_keymap *xkb_keymap =
+				xkb_keymap_new_from_buffer(state->xkb_context,
+					keymap, size, XKB_KEYMAP_FORMAT_TEXT_V1,
+					XKB_KEYMAP_COMPILE_NO_FLAGS);
 			xkb_state_unref(state->xkb_state);
-			state->xkb_state = xkb_state_new(keymap);
-			xkb_keymap_unref(keymap);
+			state->xkb_state = xkb_state_new(xkb_keymap);
+			xkb_keymap_unref(xkb_keymap);
 		}
-		free(state->xkb_keymap_string);
-		state->xkb_keymap_string = xstrdup(keymap_string);
+		munmap(state->keymap, state->keymap_size);
+		state->keymap = keymap;
+		state->keymap_size = size;
 		// forward keymap
 		zwp_virtual_keyboard_v1_keymap(state->virtual_keyboard,
 			format, fd, size);
 		wl_display_roundtrip(state->display);
 	}
 	close(fd);
-	munmap(keymap_string, size);
 }
 
 static void keyboard_grab_repeat_info(void *data,

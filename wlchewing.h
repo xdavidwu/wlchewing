@@ -68,7 +68,8 @@ struct wlchewing_state {
 
 	struct xkb_context *xkb_context;
 	struct xkb_state *xkb_state;
-	char *xkb_keymap_string;
+	char *keymap;
+	size_t keymap_size;
 	struct itimerspec repeat_info;
 
 	uint32_t last_key;
