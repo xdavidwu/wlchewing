@@ -1,7 +1,7 @@
 project('wlchewing',
   'c',
   license: 'MIT',
-  version: '0.3',
+  version: '0.4',
   meson_version: '>=1.8.0',
   default_options: {
     'c_std': 'c23',
