@@ -265,11 +265,11 @@ int main(int argc, char *argv[]) {
 	int display_fd = wl_display_get_fd(state->display);
 	arm_epollin_for(epoll_fd, display_fd, false, "watch Wayland event");
 
-	state->timer_fd = must_errno(
+	state->timerfd = must_errno(
 		timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC),
 		"create timer"
 	);
-	arm_epollin_for(epoll_fd, state->timer_fd, true, "watch timer event");
+	arm_epollin_for(epoll_fd, state->timerfd, true, "watch timer event");
 
 	int bus_fd = INT_MAX;
 	if (state->config.tray_icon) {
@@ -295,10 +295,10 @@ int main(int argc, char *argv[]) {
 				wl_display_dispatch(state->display),
 				"process Wayland events"
 			);
-		} else if (event_caught.data.fd == state->timer_fd) {
+		} else if (event_caught.data.fd == state->timerfd) {
 			uint64_t count = 0;
 			must_errno(
-				read(state->timer_fd, &count, sizeof(uint64_t)),
+				read(state->timerfd, &count, sizeof(uint64_t)),
 				"read from timer"
 			);
 			im_key_press(state, state->last_key);

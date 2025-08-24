@@ -50,7 +50,7 @@ static int render_cand(struct wlchewing_state *state,
 		0
 	};
 	int width, hint_width = 0;
-	if (hint[0]){
+	if (hint[0]) {
 		pango_layout_set_text(state->bottom_panel_key_hint_layout, hint, -1);
 		pango_layout_get_pixel_size(state->bottom_panel_key_hint_layout, &hint_width, NULL);
 	}

@@ -5,9 +5,9 @@
 #include "wlchewing.h"
 #include "xmem.h"
 
-static struct itimerspec timer_disarm = {0};
+static const struct itimerspec timer_disarm = {0};
 
-static int32_t get_millis() {
+static inline int32_t get_millis() {
 	struct timespec spec;
 	clock_gettime(CLOCK_MONOTONIC, &spec);
 	return spec.tv_sec * 1000 + spec.tv_nsec / (1000 * 1000);
@@ -34,25 +34,29 @@ static int count_utf8_bytes(const char *s, int codepoints) {
 static void im_update(struct wlchewing_state *state) {
 	const char *precommit = chewing_buffer_String_static(state->chewing);
 	const char *bopomofo = chewing_bopomofo_String_static(state->chewing);
+
 	int cursor = count_utf8_bytes(precommit,
 		chewing_cursor_Current(state->chewing));
-	char *preedit = xcalloc(strlen(precommit) + strlen(bopomofo) + 1,
-		sizeof(char));
+	int bopomofo_length = strlen(bopomofo);
+	int preedit_length = strlen(precommit) + bopomofo_length;
+	char *preedit = xcalloc(preedit_length + 1, sizeof(char));
 	strncat(preedit, precommit, cursor);
 	strcat(preedit, bopomofo);
 	strcat(preedit, &precommit[cursor]);
-	bool need_hack = strlen(preedit) == 0;
 	zwp_input_method_v2_set_preedit_string(state->input_method, preedit,
-		cursor, cursor + strlen(bopomofo));
+		cursor, cursor + bopomofo_length);
 	free(preedit);
+
 	if (chewing_commit_Check(state->chewing)) {
 		zwp_input_method_v2_commit_string(state->input_method, 
 			chewing_commit_String_static(state->chewing));
 		chewing_ack(state->chewing);
 	}
+
 	zwp_input_method_v2_commit(state->input_method, state->serial);
 	wl_display_roundtrip(state->display);
-	if (need_hack) {
+
+	if (!preedit_length) {
 		vte_hack(state);
 	}
 }
@@ -113,10 +117,9 @@ void im_mode_switch(struct wlchewing_state *state, bool forwarding) {
 			chewing_ack(state->chewing);
 		}
 		im_reset(state);
-		zwp_input_method_v2_set_preedit_string(
-			state->input_method, "", 0, 0);
-		zwp_input_method_v2_commit(state->input_method,
-			state->serial);
+		zwp_input_method_v2_set_preedit_string(state->input_method, "",
+			0, 0);
+		zwp_input_method_v2_commit(state->input_method, state->serial);
 		wl_display_roundtrip(state->display);
 		vte_hack(state);
 	}
@@ -143,16 +146,10 @@ enum press_action im_key_press(struct wlchewing_state *state, uint32_t key) {
 		// Alt and Logo are not used by us
 		return PRESS_FORWARD;
 	}
-
 	state->shift_only = keysym == XKB_KEY_Shift_L ||
 		keysym == XKB_KEY_Shift_R;
-	/* Shift is either used as modifier or mode-switch,
-	 * we should not arm timer in later case or it may reset our
-	 * state used to check whether only shift is pressed.
-	 */
-	if (state->shift_only) {
-		return PRESS_CONSUME;
-	} else if (state->forwarding) {
+
+	if (state->forwarding) {
 		return PRESS_FORWARD;
 	}
 
@@ -240,6 +237,7 @@ enum press_action im_key_press(struct wlchewing_state *state, uint32_t key) {
 			bottom_panel_render(state);
 			return PRESS_ARM_TIMER;
 		}
+		chewing_cand_close(state->chewing);
 		handled = false;
 		break;
 	case XKB_KEY_Up:
@@ -293,7 +291,7 @@ static void keyboard_grab_key(void *data,
 				&newkey->link);
 			if (state->repeat_info.it_interval.tv_nsec != 0) {
 				state->last_key = key;
-				if (timerfd_settime(state->timer_fd, 0,
+				if (timerfd_settime(state->timerfd, 0,
 						&state->repeat_info, NULL) == -1) {
 					wlchewing_perr("Failed to arm timer");
 				}
@@ -320,7 +318,7 @@ static void keyboard_grab_key(void *data,
 				free(mkeysym);
 				if (key == state->last_key) {
 					state->last_key = 0;
-					if (timerfd_settime(state->timer_fd, 0,
+					if (timerfd_settime(state->timerfd, 0,
 							&timer_disarm,
 							NULL) == -1) {
 						wlchewing_perr(
@@ -337,7 +335,6 @@ static void keyboard_grab_key(void *data,
 			if (mkeysym->key == key) {
 				wl_list_remove(&mkeysym->link);
 				free(mkeysym);
-				break;
 			}
 		}
 		wl_display_roundtrip(state->display);
@@ -388,9 +385,15 @@ static void keyboard_grab_repeat_info(void *data,
 		struct zwp_input_method_keyboard_grab_v2 *keyboard_grab,
 		int32_t rate, int32_t delay) {
 	struct wlchewing_state *state = data;
-	state->repeat_info.it_interval.tv_nsec = rate ? 1000 * 1000 * 1000 / rate : 0;
-	state->repeat_info.it_value.tv_sec = delay / 1000;
-	state->repeat_info.it_value.tv_nsec = (delay % 1000) * 1000 * 1000;
+	state->repeat_info = (struct itimerspec) {
+		.it_interval = {
+			.tv_nsec = rate ? 1000 * 1000 * 1000 / rate : 0, 
+		},
+		.it_value = {
+			.tv_sec = delay / 1000,
+			.tv_nsec = (delay % 1000) * 1000 * 1000,
+		},
+	};
 }
 
 static const struct zwp_input_method_keyboard_grab_v2_listener
@@ -460,8 +463,7 @@ static const struct zwp_input_method_v2_listener input_method_listener = {
 
 void im_release_all_keys(struct wlchewing_state *state) {
 	struct wlchewing_keysym *mkeysym, *tmp;
-	wl_list_for_each_safe(mkeysym, tmp,
-			&state->press_sent_keysyms, link) {
+	wl_list_for_each_safe(mkeysym, tmp, &state->press_sent_keysyms, link) {
 		zwp_virtual_keyboard_v1_key(state->virtual_keyboard,
 			get_millis() - state->millis_offset,
 			mkeysym->key, WL_KEYBOARD_KEY_STATE_RELEASED);
@@ -479,8 +481,10 @@ void im_setup(struct wlchewing_state *state) {
 	zwp_input_method_v2_add_listener(state->input_method,
 		&input_method_listener, state);
 
-	state->virtual_keyboard = zwp_virtual_keyboard_manager_v1_create_virtual_keyboard(
-		state->wl_globals.virtual_keyboard_manager, state->wl_globals.seat);
+	state->virtual_keyboard =
+		zwp_virtual_keyboard_manager_v1_create_virtual_keyboard(
+			state->wl_globals.virtual_keyboard_manager,
+			state->wl_globals.seat);
 
 	state->chewing = chewing_new();
 	state->xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);

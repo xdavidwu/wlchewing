@@ -72,7 +72,7 @@ struct wlchewing_state {
 	struct itimerspec repeat_info;
 
 	uint32_t last_key;
-	int timer_fd;
+	int timerfd;
 	bool shift_only;
 	struct wl_list pending_handled_keysyms; // wlchewing_keysym
 	struct wl_list press_sent_keysyms; // wlchewing_keysym

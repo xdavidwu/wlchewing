@@ -48,7 +48,7 @@ Usage: %s [OPTIONS]...\n\
 COLOR is color specified as either #RRGGBB or #RRGGBBAA.\n";
 
 void config_init(struct wlchewing_config *config) {
-	*config = (struct wlchewing_config){
+	*config = (struct wlchewing_config) {
 		.text_color		= {1.0, 1.0, 1.0, 1.0},
 		.selection_text_color	= {1.0, 1.0, 1.0, 1.0},
 		.background_color	= {0.0, 0.0, 0.0, 1.0},
