@@ -12,6 +12,7 @@ struct wlchewing_bottom_panel {
 
 	uint32_t width, height;
 	int32_t scale;
+	int32_t subpixel;
 	int selected_index;
 };
 

@@ -1,3 +1,4 @@
+#include "cairo.h"
 #define _GNU_SOURCE // memfd
 
 #include <fcntl.h>

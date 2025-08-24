@@ -32,10 +32,17 @@ static void surface_preferred_buffer_scale(void *data,
 	panel->scale = scale;
 }
 
+static void surface_enter(void *data, struct wl_surface *surface,
+		struct wl_output *output) {
+	struct wlchewing_bottom_panel *panel = data;
+	panel->subpixel = (uintptr_t)wl_output_get_user_data(output);
+}
+
 static const struct wl_surface_listener surface_listener = {
-	.enter			= (typeof(surface_listener.enter))noop,
+	.enter			= surface_enter,
 	.leave			= (typeof(surface_listener.leave))noop,
 	.preferred_buffer_scale	= surface_preferred_buffer_scale,
+	// subpixel order alreay considered via wl_output.geometry
 	.preferred_buffer_transform =
 		(typeof(surface_listener.preferred_buffer_transform))noop,
 };
@@ -117,9 +124,10 @@ struct wlchewing_bottom_panel *bottom_panel_new(struct wlchewing_state *state) {
 	assert(state->bottom_panel_text_layout);
 	struct wlchewing_bottom_panel *panel = xcalloc(1,
 		sizeof(struct wlchewing_bottom_panel));
-	panel->scale = 1;
 	panel->height = state->bottom_panel_text_height;
 	panel->width = 1;
+	panel->scale = 1;
+	panel->subpixel = WL_OUTPUT_SUBPIXEL_UNKNOWN;
 	panel->wl_surface = wl_compositor_create_surface(state->wl_globals.compositor);
 	assert(panel->wl_surface);
 	wl_surface_add_listener(panel->wl_surface, &surface_listener, panel);
@@ -158,6 +166,14 @@ void bottom_panel_destroy(struct wlchewing_bottom_panel *panel) {
 	free(panel);
 }
 
+cairo_subpixel_order_t buffer_subpixel_to_cairo[] = {
+	[WL_OUTPUT_SUBPIXEL_UNKNOWN]		= CAIRO_SUBPIXEL_ORDER_DEFAULT,
+	[WL_OUTPUT_SUBPIXEL_HORIZONTAL_RGB]	= CAIRO_SUBPIXEL_ORDER_RGB,
+	[WL_OUTPUT_SUBPIXEL_HORIZONTAL_BGR]	= CAIRO_SUBPIXEL_ORDER_BGR,
+	[WL_OUTPUT_SUBPIXEL_VERTICAL_RGB]	= CAIRO_SUBPIXEL_ORDER_VRGB,
+	[WL_OUTPUT_SUBPIXEL_VERTICAL_BGR]	= CAIRO_SUBPIXEL_ORDER_VBGR,
+};
+
 void bottom_panel_render(struct wlchewing_state *state) {
 	int total = chewing_cand_TotalChoice(state->chewing);
 	assert(state->bottom_panel->selected_index < total);
@@ -174,6 +190,19 @@ void bottom_panel_render(struct wlchewing_state *state) {
 	cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
 	cairo_paint(cairo);
 	cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
+
+	cairo_font_options_t *opt = cairo_font_options_create();
+	if (panel->subpixel == WL_OUTPUT_SUBPIXEL_NONE) {
+		cairo_font_options_set_antialias(opt, CAIRO_ANTIALIAS_GRAY);
+	} else {
+		cairo_font_options_set_antialias(opt, CAIRO_ANTIALIAS_SUBPIXEL);
+		cairo_font_options_set_subpixel_order(opt,
+			buffer_subpixel_to_cairo[panel->subpixel]);
+	}
+	cairo_set_font_options(cairo, opt);
+	cairo_font_options_destroy(opt);
+	pango_cairo_update_layout(cairo, state->bottom_panel_text_layout);
+	pango_cairo_update_layout(cairo, state->bottom_panel_key_hint_layout);
 
 	int offset = 0, total_offset = 0;
 	for (int i = 0; i < total - state->bottom_panel->selected_index &&
