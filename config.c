@@ -59,7 +59,7 @@ void config_init(struct wlchewing_config *config) {
 }
 
 static int decode_color(const char *str, double rgba[4]) {
-	int r, g, b, a = 0;
+	int r, g, b, a = 255;
 	char dummy;
 	if (sscanf(str, "#%2x%2x%2x%2x%c", &r, &g, &b, &a, &dummy) != 4 &&
 			sscanf(str, "#%2x%2x%2x%c", &r, &g, &b, &dummy) != 3) {
