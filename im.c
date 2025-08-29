@@ -177,6 +177,14 @@ enum press_action im_key_press(struct wlchewing_state *state, uint32_t key) {
 		case XKB_KEY_KP_Right:
 			im_candidates_move_by(state, 1);
 			break;
+		case XKB_KEY_Page_Up:
+		case XKB_KEY_KP_Page_Up:
+			im_candidates_move_by(state, -10);
+			break;
+		case XKB_KEY_Page_Down:
+		case XKB_KEY_KP_Page_Down:
+			im_candidates_move_by(state, 10);
+			break;
 		case XKB_KEY_Up:
 		case XKB_KEY_KP_Up:
 			chewing_cand_close(state->chewing);
