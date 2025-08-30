@@ -146,6 +146,7 @@ enum press_action im_key_press(struct wlchewing_state *state, uint32_t key) {
 		// Alt and Logo are not used by us
 		return PRESS_FORWARD;
 	}
+
 	state->shift_only = keysym == XKB_KEY_Shift_L ||
 		keysym == XKB_KEY_Shift_R;
 
@@ -314,7 +315,6 @@ static void keyboard_grab_key(void *data,
 				state->shift_only) {
 			state->shift_only = false;
 			im_mode_switch(state, !state->forwarding);
-			return;
 		}
 
 		// find if we should not forward key release
